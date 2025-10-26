@@ -453,7 +453,7 @@
             clearAllZones();
             if (klines.length < 2) return;
             calculateAndDrawActiveZones(klines, leverages, oiVolRatioData);
-            findAndDrawHistoricalZones(klines);
+            findAndDrawHistoricalZones(klines, fetchedData.longLiqs, fetchedData.shortLiqs);
         }
 
         function clearAllZones() {
@@ -552,33 +552,51 @@
             drawHeatmap(shortPools, heatmapShortSeries, maxShortVol, 'short');
         }
 
+        function findAndDrawHistoricalZones(klines, longLiqs, shortLiqs) {
+            // Combine long and short liquidations for each kline
+            const totalLiqs = klines.map((k, i) => ({
+                kline: k,
+                totalLiqValue: (longLiqs[i]?.value || 0) + (shortLiqs[i]?.value || 0)
+            }));
 
-        function findAndDrawHistoricalZones(klines) {
-            const volumes = klines.map(k => k.volume);
-            const avgVolume = volumes.reduce((a, b) => a + b, 0) / volumes.length;
-            const volumeThreshold = avgVolume * 2.5;
+            // Filter for klines with significant liquidations and sort them
+            const significantLiqs = totalLiqs
+                .filter(l => l.totalLiqValue > 0)
+                .sort((a, b) => b.totalLiqValue - a.totalLiqValue);
 
-            klines.forEach(kline => {
-                const bodySize = Math.abs(kline.open - kline.close);
-                const range = kline.high - kline.low;
+            if (significantLiqs.length === 0) return;
 
-                if (kline.volume > volumeThreshold && range > bodySize * 3 && bodySize > 0) {
-                    const wickSizeTop = kline.high - Math.max(kline.open, kline.close);
-                    const wickSizeBottom = Math.min(kline.open, kline.close) - kline.low;
-                    
-                    const drawHistoricalLine = (price) => {
-                         const line = candlestickSeries.createPriceLine({
-                            price: price, color: '#6b7280', lineWidth: 2,
-                            lineStyle: LightweightCharts.LineStyle.Dotted,
-                            axisLabelVisible: true, title: 'Pasado',
-                        });
-                        historicalPriceLines.push(line);
-                    };
+            // Determine a dynamic threshold to avoid noise
+            const avgLiqValue = significantLiqs.reduce((sum, l) => sum + l.totalLiqValue, 0) / significantLiqs.length;
+            const liqThreshold = avgLiqValue * 2.0; // Only show liquidations 2x the average
 
-                    if (wickSizeTop > range * 0.6) drawHistoricalLine(kline.high);
-                    if (wickSizeBottom > range * 0.6) drawHistoricalLine(kline.low);
-                }
-            });
+            const MAX_HISTORICAL_ZONES = 7;
+            let zonesDrawn = 0;
+
+            // Draw dashed lines for the most significant historical liquidations
+            for (const liq of significantLiqs) {
+                if (zonesDrawn >= MAX_HISTORICAL_ZONES) break;
+                if (liq.totalLiqValue < liqThreshold) continue;
+
+                const drawLine = (price, isTop) => {
+                    const line = candlestickSeries.createPriceLine({
+                        price: price,
+                        color: '#808080', // Neutral gray for historical zones
+                        lineWidth: 1,
+                        lineStyle: LightweightCharts.LineStyle.Dashed,
+                        axisLabelVisible: isTop, // Only show label on the top line
+                        title: isTop ? `$${(liq.totalLiqValue / 1e6).toFixed(1)}M` : '',
+                        axisLabelColor: '#808080',
+                        axisLabelTextColor: '#ffffff',
+                    });
+                    historicalPriceLines.push(line);
+                };
+
+                // Create a zone from the high to the low of the candle
+                drawLine(liq.kline.high, true);
+                drawLine(liq.kline.low, false);
+                zonesDrawn++;
+            }
         }
         
         function clearAllSeriesData() {
