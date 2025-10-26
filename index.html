@@ -11,10 +11,9 @@
         :root {
             --background-color: #131722;
             --text-color: #d1d4dc;
-            --header-bg-color: #1e222d;
+            --header-bg-color: #1e22d;
             --control-bg-color: #2a2e39;
             --border-color: #485c7b;
-            --grid-color: rgba(42, 46, 57, 0.8);
         }
 
         [data-theme='light'] {
@@ -23,7 +22,6 @@
             --header-bg-color: #f8f9fa;
             --control-bg-color: #e9ecef;
             --border-color: #dee2e6;
-            --grid-color: rgba(224, 227, 235, 0.8);
         }
 
         body {
@@ -186,7 +184,6 @@
         const drawLineTool = document.getElementById('draw-line-tool');
 
         // --- Chart State ---
-        const COINALYZE_API_KEY = '324353e5-ba5d-49e3-9aaf-fad41a5bae6f';
         let chart;
         let candlestickSeries, volumeSeries, openInterestSeries, longLiqsSeries, shortLiqsSeries, oiVolRatioSeries;
         let heatmapLongSeries = [], heatmapShortSeries = [];
@@ -266,24 +263,23 @@
             }
         }
         
-        async function fetchFromCoinalyze(endpoint, params) {
-            const url = new URL(`https://api.coinalyze.net/v1/${endpoint}`);
-            if (params) {
-                url.search = new URLSearchParams(params).toString();
+        async function fetchFromProxy(endpoint, params) {
+            const url = new URL(`/api/coinalyze`, window.location.origin);
+            url.searchParams.append('endpoint', endpoint);
+            for (const key in params) {
+                url.searchParams.append(key, params[key]);
             }
-            const response = await fetch(url, {
-                headers: { 'api-key': COINALYZE_API_KEY }
-            });
+            const response = await fetch(url);
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`Coinalyze API Error for ${endpoint}: ${response.statusText} - ${errorText}`);
+                throw new Error(`Proxy API Error for ${endpoint}: ${response.statusText} - ${errorText}`);
             }
             return response.json();
         }
 
         async function fetchKlines(symbol, interval) {
             const coinalyzeInterval = interval.replace('m', 'T').replace('h', 'H').replace('d', 'D');
-            const data = await fetchFromCoinalyze('ohlcv', { symbols: symbol, interval: coinalyzeInterval });
+            const data = await fetchFromProxy('ohlcv', { symbols: symbol, interval: coinalyzeInterval });
             const symbolData = data[0]?.[symbol];
             if (!Array.isArray(symbolData)) throw new Error('Coinalyze OHLCV API did not return valid data.');
             return symbolData.map(d => ({ time: d.t, open: d.o, high: d.h, low: d.l, close: d.c, volume: d.v }));
@@ -291,7 +287,7 @@
 
         async function fetchOpenInterest(symbol, interval) {
             const coinalyzeInterval = interval.replace('m', 'T').replace('h', 'H').replace('d', 'D');
-            const data = await fetchFromCoinalyze('open-interest-history', { symbols: symbol, interval: coinalyzeInterval });
+            const data = await fetchFromProxy('open-interest-history', { symbols: symbol, interval: coinalyzeInterval });
             const symbolData = data[0]?.[symbol];
             if (!Array.isArray(symbolData)) throw new Error('Coinalyze Open Interest API did not return valid data.');
             return symbolData.map(d => ({ time: d.t, value: d.v }));
@@ -300,7 +296,7 @@
         async function fetchLiquidations(symbol) {
             const to = Math.floor(Date.now() / 1000);
             const from = to - (24 * 60 * 60); // 24 hours ago
-            const data = await fetchFromCoinalyze('liquidation-history', { symbols: symbol, from, to });
+            const data = await fetchFromProxy('liquidation-history', { symbols: symbol, from, to });
             const symbolData = data[0]?.[symbol];
             if (!Array.isArray(symbolData)) return [];
             return symbolData.map(d => ({
@@ -316,10 +312,11 @@
             loader.classList.remove('hidden');
             errorOverlay.classList.add('hidden');
             try {
+                const coinalyzeSymbol = `${currentSymbol}.PERP_BINANCE`;
                 const results = await Promise.allSettled([
-                    fetchKlines(currentSymbol, currentInterval),
-                    fetchOpenInterest(currentSymbol, currentInterval),
-                    fetchLiquidations(currentSymbol)
+                    fetchKlines(coinalyzeSymbol, currentInterval),
+                    fetchOpenInterest(coinalyzeSymbol, currentInterval),
+                    fetchLiquidations(coinalyzeSymbol)
                 ]);
 
                 const klinesResult = results[0];
@@ -546,6 +543,7 @@
         }
         
         function clearAllSeriesData() {
+            if (!candlestickSeries) return;
             candlestickSeries.setData([]);
             volumeSeries.setData([]);
             openInterestSeries.setData([]);
@@ -558,83 +556,6 @@
         function handleResize() { if (chart) chart.resize(chartContainer.clientWidth, chartContainer.clientHeight); }
         
         // --- Event Listeners ---
-        themeToggle.addEventListener('click', () => {
-            currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            applyTheme(currentTheme);
-        });
-        
-        symbolSelector.addEventListener('change', (e) => {
-            currentSymbol = e.target.value;
-            updateChartData();
-        });
-
-        intervalButtonsContainer.addEventListener('click', (e) => {
-            const target = e.target.closest('.interval-btn');
-            if (!target) return;
-            intervalButtonsContainer.querySelector('.active').classList.remove('active');
-            target.classList.add('active');
-            currentInterval = target.dataset.interval;
-            updateChartData();
-        });
-        
-        leverageButtonsContainer.addEventListener('click', (e) => {
-            const target = e.target.closest('.leverage-btn');
-            if (!target) return;
-            target.classList.toggle('active');
-
-            selectedLeverages = Array.from(leverageButtonsContainer.querySelectorAll('.active'))
-                                   .map(btn => parseInt(btn.dataset.leverage, 10));
-
-            if (selectedLeverages.length === 0) {
-                target.classList.add('active');
-                selectedLeverages.push(parseInt(target.dataset.leverage, 10));
-            }
-            renderAllVisuals();
-        });
-
-        liquiditySlider.addEventListener('input', (e) => {
-            liquidityThreshold = parseFloat(e.target.value);
-            sliderValueEl.textContent = `$${(liquidityThreshold / 1e6).toFixed(1)}M`;
-            renderAllVisuals();
-        });
-
-        // Drawing Tool Logic
-        drawLineTool.addEventListener('click', () => {
-            isDrawingMode = !isDrawingMode;
-            drawLineTool.classList.toggle('active', isDrawingMode);
-        });
-
-        chart.subscribeClick(param => {
-            if (!isDrawingMode || !param.point) return;
-
-            const price = candlestickSeries.coordinateToPrice(param.point.y);
-            
-            // Check if click is on an existing line to remove it
-            const lineToRemove = userDrawnLines.find(line => {
-                const linePrice = line.options().price;
-                const priceRange = chart.priceScale('right').heightToCoordinate(10) - chart.priceScale('right').heightToCoordinate(0);
-                return Math.abs(linePrice - price) < priceRange; // Click within 10 pixels of the line
-            });
-
-            if (lineToRemove) {
-                candlestickSeries.removePriceLine(lineToRemove);
-                userDrawnLines = userDrawnLines.filter(l => l !== lineToRemove);
-            } else {
-                const newLine = candlestickSeries.createPriceLine({
-                    price: price,
-                    color: '#2962FF',
-                    lineWidth: 2,
-                    lineStyle: LightweightCharts.LineStyle.Solid,
-                    axisLabelVisible: true,
-                    title: ''
-                });
-                userDrawnLines.push(newLine);
-            }
-        });
-
-        window.addEventListener('resize', handleResize);
-
-        // --- Initial Load ---
         document.addEventListener('DOMContentLoaded', () => {
             initializeChart();
             applyTheme(currentTheme);
@@ -644,6 +565,81 @@
                     updateChartData();
                 }
             }, 30000);
+
+            // Drawing Tool Logic
+            drawLineTool.addEventListener('click', () => {
+                isDrawingMode = !isDrawingMode;
+                drawLineTool.classList.toggle('active', isDrawingMode);
+            });
+
+            chart.subscribeClick(param => {
+                if (!isDrawingMode || !param.point) return;
+
+                const price = candlestickSeries.coordinateToPrice(param.point.y);
+                
+                const lineToRemove = userDrawnLines.find(line => {
+                    const linePrice = line.options().price;
+                    const priceRange = chart.priceScale('right').heightToCoordinate(10) - chart.priceScale('right').heightToCoordinate(0);
+                    return Math.abs(linePrice - price) < priceRange;
+                });
+
+                if (lineToRemove) {
+                    candlestickSeries.removePriceLine(lineToRemove);
+                    userDrawnLines = userDrawnLines.filter(l => l !== lineToRemove);
+                } else {
+                    const newLine = candlestickSeries.createPriceLine({
+                        price: price,
+                        color: '#2962FF',
+                        lineWidth: 2,
+                        lineStyle: LightweightCharts.LineStyle.Solid,
+                        axisLabelVisible: true,
+                        title: ''
+                    });
+                    userDrawnLines.push(newLine);
+                }
+            });
+
+            themeToggle.addEventListener('click', () => {
+                currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                applyTheme(currentTheme);
+            });
+            
+            symbolSelector.addEventListener('change', (e) => {
+                currentSymbol = e.target.value;
+                updateChartData();
+            });
+
+            intervalButtonsContainer.addEventListener('click', (e) => {
+                const target = e.target.closest('.interval-btn');
+                if (!target) return;
+                intervalButtonsContainer.querySelector('.active').classList.remove('active');
+                target.classList.add('active');
+                currentInterval = target.dataset.interval;
+                updateChartData();
+            });
+            
+            leverageButtonsContainer.addEventListener('click', (e) => {
+                const target = e.target.closest('.leverage-btn');
+                if (!target) return;
+                target.classList.toggle('active');
+
+                selectedLeverages = Array.from(leverageButtonsContainer.querySelectorAll('.active'))
+                                    .map(btn => parseInt(btn.dataset.leverage, 10));
+
+                if (selectedLeverages.length === 0) {
+                    target.classList.add('active');
+                    selectedLeverages.push(parseInt(target.dataset.leverage, 10));
+                }
+                renderAllVisuals();
+            });
+
+            liquiditySlider.addEventListener('input', (e) => {
+                liquidityThreshold = parseFloat(e.target.value);
+                sliderValueEl.textContent = `$${(liquidityThreshold / 1e6).toFixed(1)}M`;
+                renderAllVisuals();
+            });
+
+            window.addEventListener('resize', handleResize);
         });
     </script>
 </body>

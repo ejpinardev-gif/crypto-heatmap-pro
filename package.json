@@ -1,0 +1,11 @@
+{
+  "name": "crypto-heatmap-backend",
+  "version": "1.0.0",
+  "description": "Proxy backend for Coinalyze API",
+  "main": "api/coinalyze.js",
+  "scripts": {
+    "start": "node api/coinalyze.js"
+  },
+  "author": "",
+  "license": "ISC"
+}
