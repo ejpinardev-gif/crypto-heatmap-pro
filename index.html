@@ -179,11 +179,12 @@
         // --- Chart State ---
         let chart;
         let candlestickSeries, volumeSeries, openInterestSeries, longLiqsSeries, shortLiqsSeries, oiVolRatioSeries;
-        let activeLongSeries = [], activeShortSeries = [];
+        let heatmapLongSeries = [], heatmapShortSeries = [];
         let historicalPriceLines = [], activePriceLines = [];
         let klineSocket = null, liqSocket = null;
         let fetchedData = { klines: [], openInterest: [], liquidations: [], longLiqs: [], shortLiqs: [] };
-        const MAX_ACTIVE_ZONES = 10;
+        const HEATMAP_SERIES_COUNT = 150; // Increased for fluid heatmap
+        const VISIBLE_LABELS_COUNT = 5; // Max labels to show to avoid clutter
 
         let currentSymbol = 'BTCUSDT';
         let currentInterval = '4h';
@@ -247,9 +248,10 @@
             oiVolRatioSeries = chart.addLineSeries({ color: '#facc15', lineWidth: 2, priceScaleId: 'oi_vol_ratio', scaleMargins: { top: mainPaneHeight + 3 * indicatorPaneHeight, bottom: 0 } });
             chart.priceScale('oi_vol_ratio').applyOptions({ scaleMargins: { top: mainPaneHeight + 3 * indicatorPaneHeight, bottom: 0 } });
 
-            for (let i = 0; i < MAX_ACTIVE_ZONES; i++) {
-                activeLongSeries.push(chart.addLineSeries({ priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, priceScaleId: 'right' }));
-                activeShortSeries.push(chart.addLineSeries({ priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, priceScaleId: 'right' }));
+            for (let i = 0; i < HEATMAP_SERIES_COUNT; i++) {
+                const commonOptions = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, priceScaleId: 'right' };
+                heatmapLongSeries.push(chart.addLineSeries(commonOptions));
+                heatmapShortSeries.push(chart.addLineSeries(commonOptions));
             }
         }
         
@@ -324,7 +326,16 @@
                 };
                 volumeSeries.update(volumeData);
 
-                if (kline.x) updateChartData();
+                if (kline.x) { // If kline is closed
+                    // Debounce full update to avoid excessive calls
+                    clearTimeout(window.updateTimeout);
+                    window.updateTimeout = setTimeout(updateChartData, 1000);
+                } else {
+                    // Live update for heatmap
+                    const lastKline = { ...candleData, volume: parseFloat(kline.v) };
+                    const newKlines = [...fetchedData.klines.slice(0, -1), lastKline];
+                    drawAllLiquidationZones(newKlines, selectedLeverages, fetchedData.oiVolRatioData);
+                }
             };
 
             liqSocket = new WebSocket(`wss://fstream.binance.com/ws/${currentSymbol.toLowerCase()}@forceOrder`);
@@ -334,17 +345,12 @@
                 const liqValue = parseFloat(liq.q) * parseFloat(liq.p);
                 const liqType = liq.S === 'SELL' ? 'long' : 'short';
 
-                const lastLongLiq = fetchedData.longLiqs[fetchedData.longLiqs.length - 1];
-                const lastShortLiq = fetchedData.shortLiqs[fetchedData.shortLiqs.length - 1];
+                const targetSeries = liqType === 'long' ? longLiqsSeries : shortLiqsSeries;
+                const lastDataPoint = fetchedData[liqType === 'long' ? 'longLiqs' : 'shortLiqs'].slice(-1)[0];
 
-                if (lastLongLiq && liqTime >= lastLongLiq.time) {
-                    if(liqType === 'long') {
-                        lastLongLiq.value += liqValue;
-                        longLiqsSeries.update(lastLongLiq);
-                    } else {
-                        lastShortLiq.value += liqValue;
-                        shortLiqsSeries.update(lastShortLiq);
-                    }
+                if (lastDataPoint && liqTime >= lastDataPoint.time) {
+                    lastDataPoint.value += liqValue;
+                    targetSeries.update(lastDataPoint);
                 }
             };
         }
@@ -363,7 +369,7 @@
                 if (klinesResult.status === 'rejected' || !klinesResult.value || klinesResult.value.length === 0) {
                     console.error("Essential klines data could not be fetched.", klinesResult.reason || 'API returned no klines data.');
                     clearAllSeriesData();
-                    errorOverlay.classList.remove('hidden'); // Show error message
+                    errorOverlay.classList.remove('hidden');
                     return;
                 }
 
@@ -421,11 +427,12 @@
             const oiVolRatioData = klines.map(kline => {
                 const oiValue = oiMap.get(kline.time);
                 if (oiValue && kline.volume > 0) {
-                        const volumeInUSD = kline.volume * kline.close;
+                    const volumeInUSD = kline.volume * kline.close;
                     return { time: kline.time, value: oiValue / volumeInUSD };
                 }
                 return { time: kline.time, value: 0 };
             });
+            fetchedData.oiVolRatioData = oiVolRatioData;
 
             candlestickSeries.setData(klines);
             volumeSeries.setData(volumeData);
@@ -452,62 +459,40 @@
             activePriceLines.forEach(line => candlestickSeries.removePriceLine(line));
             historicalPriceLines = [];
             activePriceLines = [];
-            activeLongSeries.forEach(series => series.setData([]));
-            activeShortSeries.forEach(series => series.setData([]));
-        }
-
-        function calculateProbabilityScore(pool, lastKline, klines, allPools, oiVolRatioData) {
-            const proximityScore = 1 / (Math.abs(pool.price - lastKline.close) / lastKline.close);
-            const maxVol = Math.max(...allPools.map(p => p.volume), 1);
-            const sizeScore = pool.volume / maxVol;
-
-            const recentKlines = klines.slice(-3);
-            const priceChange = recentKlines[2].close - recentKlines[0].open;
-            let momentumScore = 0.5;
-            if (pool.price > lastKline.close && priceChange > 0) momentumScore = 1;
-            if (pool.price < lastKline.close && priceChange < 0) momentumScore = 1;
-
-            const atrPeriod = 14;
-            const ranges = klines.slice(-atrPeriod).map(k => k.high - k.low);
-            const atr = ranges.reduce((a, b) => a + b, 0) / ranges.length;
-            const currentRange = lastKline.high - lastKline.low;
-            const volatilityScore = currentRange > atr * 1.5 ? 1 : 0.5;
-
-            let oiVolScore = 0.5;
-            if ((currentInterval === '1h' || currentInterval === '4h') && oiVolRatioData.length > 0) {
-                const recentRatios = oiVolRatioData.slice(-5).map(d => d.value).filter(v => v > 0);
-                if (recentRatios.length > 2) {
-                    const avgFirstHalf = recentRatios.slice(0, Math.floor(recentRatios.length / 2)).reduce((a, b) => a + b, 0) / Math.floor(recentRatios.length / 2);
-                    const avgSecondHalf = recentRatios.slice(Math.floor(recentRatios.length / 2)).reduce((a, b) => a + b, 0) / Math.ceil(recentRatios.length / 2);
-                    if (avgSecondHalf > avgFirstHalf * 1.05) {
-                        oiVolScore = 1;
-                    }
-                }
-            }
-
-            return (proximityScore * 0.35) + (sizeScore * 0.25) + (momentumScore * 0.15) + (volatilityScore * 0.1) + (oiVolScore * 0.15);
+            heatmapLongSeries.forEach(series => series.setData([]));
+            heatmapShortSeries.forEach(series => series.setData([]));
         }
 
         function calculateAndDrawActiveZones(klines, leverages, oiVolRatioData) {
             const liquidationPools = new Map();
             const relevantKlines = klines.slice(-100);
             const lastKline = klines[klines.length - 1];
-            const priceStep = lastKline.close * 0.0005;
+            const priceStep = lastKline.close * 0.0002; // Finer step for granularity
+
+            // Gaussian-like blur kernel to spread volume
+            const blurKernel = [
+                { offset: -2, weight: 0.1 }, { offset: -1, weight: 0.2 },
+                { offset: 0, weight: 0.4 },
+                { offset: 1, weight: 0.2 }, { offset: 2, weight: 0.1 },
+            ];
 
             leverages.forEach(leverage => {
                 relevantKlines.forEach(kline => {
                     const entryPrice = (kline.high + kline.low) / 2;
                     const positionVolume = kline.volume / (2 * leverages.length);
-                    const longLiqPrice = entryPrice * (1 - 1 / leverage);
-                    const shortLiqPrice = entryPrice * (1 + 1 / leverage);
-                    const longPoolKey = Math.round(longLiqPrice / priceStep) * priceStep;
-                    const shortPoolKey = Math.round(shortLiqPrice / priceStep) * priceStep;
                     
-                    if (!liquidationPools.has(longPoolKey)) liquidationPools.set(longPoolKey, { volume: 0, startTime: kline.time });
-                    liquidationPools.get(longPoolKey).volume += positionVolume;
+                    const processLiquidation = (price, volume) => {
+                        const basePoolKey = Math.round(price / priceStep);
+                        blurKernel.forEach(k => {
+                            const finalKey = (basePoolKey + k.offset) * priceStep;
+                            const volToAdd = volume * k.weight;
+                            if (!liquidationPools.has(finalKey)) liquidationPools.set(finalKey, { volume: 0 });
+                            liquidationPools.get(finalKey).volume += volToAdd;
+                        });
+                    };
 
-                    if (!liquidationPools.has(shortPoolKey)) liquidationPools.set(shortPoolKey, { volume: 0, startTime: kline.time });
-                    liquidationPools.get(shortPoolKey).volume += positionVolume;
+                    processLiquidation(entryPrice * (1 - 1 / leverage), positionVolume); // Long liq
+                    processLiquidation(entryPrice * (1 + 1 / leverage), positionVolume); // Short liq
                 });
             });
 
@@ -518,56 +503,53 @@
             liquiditySlider.max = maxLiquidity;
             const filteredPools = poolsArray.filter(p => (p.volume * p.price) >= liquidityThreshold);
             
-            let highestScore = -1;
-            let mostProbablePool = null;
-            filteredPools.forEach(pool => {
-                pool.score = calculateProbabilityScore(pool, lastKline, klines, filteredPools, oiVolRatioData);
-                if (pool.score > highestScore) {
-                    highestScore = pool.score;
-                    mostProbablePool = pool;
-                }
-            });
-
-            const longPools = filteredPools.filter(p => p.price < lastPrice && p.volume > 0).sort((a,b) => b.volume - a.volume);
-            const shortPools = filteredPools.filter(p => p.price > lastPrice && p.volume > 0).sort((a,b) => b.volume - a.volume);
+            const longPools = filteredPools.filter(p => p.price < lastPrice).sort((a,b) => b.volume - a.volume);
+            const shortPools = filteredPools.filter(p => p.price > lastPrice).sort((a,b) => b.volume - a.volume);
+            
             const maxLongVol = longPools[0]?.volume || 1;
             const maxShortVol = shortPools[0]?.volume || 1;
+            
             const lastTime = klines[klines.length - 1].time;
             const intervalSeconds = klines.length > 1 ? klines[1].time - klines[0].time : 3600;
-            const futureTime = lastTime + intervalSeconds * 50;
+            const futureTime = lastTime + intervalSeconds * 10; // Shorter line
 
-            const updateSeriesAndLabels = (pools, seriesArray, maxVolume, type) => {
-                pools.slice(0, MAX_ACTIVE_ZONES).forEach((pool, i) => {
+            const drawHeatmap = (pools, seriesArray, maxVolume, type) => {
+                const topPools = pools.slice(0, VISIBLE_LABELS_COUNT);
+                
+                pools.slice(0, HEATMAP_SERIES_COUNT).forEach((pool, i) => {
                     const intensity = Math.min(1, pool.volume / maxVolume);
                     const isLong = type === 'long';
-                    const color = isLong ? `rgba(38, 166, 154, ${0.2 + intensity * 0.7})` : `rgba(239, 83, 80, ${0.2 + intensity * 0.7})`;
-                    const lineWidth = 1 + Math.floor(intensity * 4);
+                    
+                    // Vibrant, transparent colors for heatmap effect
+                    const color = isLong ? `rgba(0, 255, 0, ${0.05 + intensity * 0.4})` : `rgba(255, 0, 0, ${0.05 + intensity * 0.4})`;
+                    const lineWidth = 0.5 + intensity * 3.5; // Fractional width
                     
                     const series = seriesArray[i];
                     series.applyOptions({ color, lineWidth });
-                    series.setData([{ time: pool.startTime, value: pool.price }, { time: futureTime, value: pool.price }]);
+                    series.setData([{ time: lastTime, value: pool.price }, { time: futureTime, value: pool.price }]);
 
-                    const liquidityInUSD = pool.volume * pool.price;
-                    let title = `$${(liquidityInUSD / 1e6).toFixed(1)}M`;
-                    if (mostProbablePool && mostProbablePool.price === pool.price) {
-                         title = `⭐ ${title} (Más Probable)`;
+                    // Only add labels for the most significant zones
+                    if (i < VISIBLE_LABELS_COUNT && pool.price === topPools[i].price) {
+                        const liquidityInUSD = pool.volume * pool.price;
+                        const title = `$${(liquidityInUSD / 1e6).toFixed(1)}M`;
+                        
+                        const labelLine = candlestickSeries.createPriceLine({
+                            price: pool.price,
+                            color: 'transparent',
+                            axisLabelVisible: true,
+                            title: title,
+                            axisLabelColor: isLong ? '#26a69a' : '#ef5350',
+                            axisLabelTextColor: '#ffffff',
+                        });
+                        activePriceLines.push(labelLine);
                     }
-                    
-                    const labelLine = candlestickSeries.createPriceLine({
-                        price: pool.price,
-                        color: 'transparent',
-                        axisLabelVisible: true,
-                        title: title,
-                        axisLabelColor: (mostProbablePool && mostProbablePool.price === pool.price) ? '#facc15' : (isLong ? '#26a69a' : '#ef5350'),
-                        axisLabelTextColor: '#ffffff',
-                    });
-                    activePriceLines.push(labelLine);
                 });
             };
 
-            updateSeriesAndLabels(longPools, activeLongSeries, maxLongVol, 'long');
-            updateSeriesAndLabels(shortPools, activeShortSeries, maxShortVol, 'short');
+            drawHeatmap(longPools, heatmapLongSeries, maxLongVol, 'long');
+            drawHeatmap(shortPools, heatmapShortSeries, maxShortVol, 'short');
         }
+
 
         function findAndDrawHistoricalZones(klines) {
             const volumes = klines.map(k => k.volume);
@@ -661,4 +643,3 @@
     </script>
 </body>
 </html>
-
