@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!-- Trigger Vercel Deploy -->
 <html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
@@ -12,7 +11,7 @@
         :root {
             --background-color: #131722;
             --text-color: #d1d4dc;
-            --header-bg-color: #1e22d;
+            --header-bg-color: #1e222d;
             --control-bg-color: #2a2e39;
             --border-color: #485c7b;
         }
@@ -157,7 +156,7 @@
             <!-- Error Message Overlay -->
             <div id="error-overlay" class="hidden absolute inset-0 bg-red-900 bg-opacity-75 flex flex-col items-center justify-center text-center p-8 z-20">
                 <h3 class="text-2xl font-bold text-red-200">Error de Carga de Datos</h3>
-                <p class="text-red-300 mt-2">No se pudieron obtener los datos esenciales del mercado. Esto puede ser un problema temporal con la API. Por favor, intente seleccionar otro par o recargar la página en unos momentos.</p>
+                <p id="error-message" class="text-red-300 mt-2">No se pudieron obtener los datos esenciales del mercado. Esto puede ser un problema temporal con la API. Por favor, intente seleccionar otro par o recargar la página en unos momentos.</p>
             </div>
             <!-- Indicator Labels -->
             <div id="indicator-labels" class="absolute top-0 left-0 w-full h-full pointer-events-none">
@@ -182,6 +181,7 @@
         const themeIconLight = document.getElementById('theme-icon-light');
         const themeIconDark = document.getElementById('theme-icon-dark');
         const errorOverlay = document.getElementById('error-overlay');
+        const errorMessageEl = document.getElementById('error-message');
         const drawLineTool = document.getElementById('draw-line-tool');
 
         // --- Chart State ---
@@ -270,19 +270,32 @@
             for (const key in params) {
                 url.searchParams.append(key, params[key]);
             }
+            
+            console.log(`Requesting data from proxy: ${url}`);
+
             const response = await fetch(url);
+            const responseBody = await response.text(); // Get response body as text to log it
+
             if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Proxy API Error for ${endpoint}: ${response.statusText} - ${errorText}`);
+                console.error('Proxy Error Response:', responseBody);
+                throw new Error(`Proxy API Error for ${endpoint}: ${response.status} ${response.statusText} - ${responseBody}`);
             }
-            return response.json();
+            
+            try {
+                const data = JSON.parse(responseBody); // Try to parse as JSON
+                console.log(`Data received for ${endpoint}:`, data);
+                return data;
+            } catch (e) {
+                console.error('Failed to parse JSON from proxy:', responseBody);
+                throw new Error('Received non-JSON response from server.');
+            }
         }
 
         async function fetchKlines(symbol, interval) {
             const coinalyzeInterval = interval.replace('m', 'T').replace('h', 'H').replace('d', 'D');
             const data = await fetchFromProxy('ohlcv', { symbols: symbol, interval: coinalyzeInterval });
             const symbolData = data[0]?.[symbol];
-            if (!Array.isArray(symbolData)) throw new Error('Coinalyze OHLCV API did not return valid data.');
+            if (!Array.isArray(symbolData)) throw new Error(`Coinalyze OHLCV API did not return valid data. Response: ${JSON.stringify(data)}`);
             return symbolData.map(d => ({ time: d.t, open: d.o, high: d.h, low: d.l, close: d.c, volume: d.v }));
         }
 
@@ -290,7 +303,7 @@
             const coinalyzeInterval = interval.replace('m', 'T').replace('h', 'H').replace('d', 'D');
             const data = await fetchFromProxy('open-interest-history', { symbols: symbol, interval: coinalyzeInterval });
             const symbolData = data[0]?.[symbol];
-            if (!Array.isArray(symbolData)) throw new Error('Coinalyze Open Interest API did not return valid data.');
+            if (!Array.isArray(symbolData)) throw new Error(`Coinalyze Open Interest API did not return valid data. Response: ${JSON.stringify(data)}`);
             return symbolData.map(d => ({ time: d.t, value: d.v }));
         }
 
@@ -299,7 +312,7 @@
             const from = to - (24 * 60 * 60); // 24 hours ago
             const data = await fetchFromProxy('liquidation-history', { symbols: symbol, from, to });
             const symbolData = data[0]?.[symbol];
-            if (!Array.isArray(symbolData)) return [];
+            if (!Array.isArray(symbolData)) return []; // It's okay to have no liquidations
             return symbolData.map(d => ({
                 time: d.t,
                 value: d.q * d.p,
@@ -322,7 +335,9 @@
 
                 const klinesResult = results[0];
                 if (klinesResult.status === 'rejected' || !klinesResult.value || klinesResult.value.length === 0) {
-                    console.error("Essential klines data could not be fetched.", klinesResult.reason || 'API returned no klines data.');
+                    const reason = klinesResult.reason?.message || 'API returned no klines data.';
+                    console.error("Essential klines data could not be fetched.", reason);
+                    errorMessageEl.textContent = `No se pudieron obtener los datos (Klines). Razón: ${reason}`;
                     clearAllSeriesData();
                     errorOverlay.classList.remove('hidden');
                     return;
@@ -340,6 +355,7 @@
                 
             } catch (error) {
                 console.error("An unexpected error occurred during the data update process:", error);
+                errorMessageEl.textContent = `Error inesperado: ${error.message}`;
                 errorOverlay.classList.remove('hidden');
             } finally {
                 loader.classList.add('hidden');
