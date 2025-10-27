@@ -1,11 +1,12 @@
-const fetch = require('node-fetch');
-
 module.exports = async (req, res) => {
+    // Dynamically import node-fetch
+    const fetch = (await import('node-fetch')).default;
+
     const { endpoint, ...params } = req.query;
     const COINALYZE_API_KEY = process.env.COINALYZE_API_KEY;
 
     if (!COINALYZE_API_KEY) {
-        return res.status(500).json({ error: 'API key is not configured.' });
+        return res.status(500).json({ error: 'API key is not configured on Vercel.' });
     }
 
     if (!endpoint) {
@@ -20,16 +21,12 @@ module.exports = async (req, res) => {
             headers: { 'api-key': COINALYZE_API_KEY }
         });
 
-        if (!apiResponse.ok) {
-            const errorText = await apiResponse.text();
-            return res.status(apiResponse.status).json({ error: `Coinalyze API Error: ${errorText}` });
-        }
-
-        const data = await apiResponse.json();
-        res.setHeader('Access-Control-Allow-Origin', '*'); // Allow frontend to access
-        res.status(200).json(data);
+        // Pass through the status and body from Coinalyze to our frontend
+        const responseBody = await apiResponse.text();
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.status(apiResponse.status).send(responseBody);
 
     } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch from Coinalyze API.' });
+        res.status(500).json({ error: 'Failed to fetch from Coinalyze API.', details: error.message });
     }
 };
