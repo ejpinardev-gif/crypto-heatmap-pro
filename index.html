@@ -200,6 +200,15 @@
         let isUpdating = false;
         let isDrawingMode = false;
 
+        const coinalyzeIntervalMap = {
+            '1m': '1min',
+            '5m': '5min',
+            '15m': '15min',
+            '1h': '1hour',
+            '4h': '4hour',
+            '1d': 'daily'
+        };
+
         // --- Theme Options ---
         const themes = {
             dark: {
@@ -274,7 +283,7 @@
             console.log(`Requesting data from proxy: ${url}`);
 
             const response = await fetch(url);
-            const responseBody = await response.text(); // Get response body as text to log it
+            const responseBody = await response.text();
 
             if (!response.ok) {
                 console.error('Proxy Error Response:', responseBody);
@@ -282,7 +291,7 @@
             }
             
             try {
-                const data = JSON.parse(responseBody); // Try to parse as JSON
+                const data = JSON.parse(responseBody);
                 console.log(`Data received for ${endpoint}:`, data);
                 return data;
             } catch (e) {
@@ -292,7 +301,7 @@
         }
 
         async function fetchKlines(symbol, interval) {
-            const coinalyzeInterval = interval.replace('m', 'T').replace('h', 'H').replace('d', 'D');
+            const coinalyzeInterval = coinalyzeIntervalMap[interval];
             const data = await fetchFromProxy('ohlcv', { symbols: symbol, interval: coinalyzeInterval });
             const symbolData = data[0]?.[symbol];
             if (!Array.isArray(symbolData)) throw new Error(`Coinalyze OHLCV API did not return valid data. Response: ${JSON.stringify(data)}`);
@@ -300,7 +309,7 @@
         }
 
         async function fetchOpenInterest(symbol, interval) {
-            const coinalyzeInterval = interval.replace('m', 'T').replace('h', 'H').replace('d', 'D');
+            const coinalyzeInterval = coinalyzeIntervalMap[interval];
             const data = await fetchFromProxy('open-interest-history', { symbols: symbol, interval: coinalyzeInterval });
             const symbolData = data[0]?.[symbol];
             if (!Array.isArray(symbolData)) throw new Error(`Coinalyze Open Interest API did not return valid data. Response: ${JSON.stringify(data)}`);
@@ -312,7 +321,7 @@
             const from = to - (24 * 60 * 60); // 24 hours ago
             const data = await fetchFromProxy('liquidation-history', { symbols: symbol, from, to });
             const symbolData = data[0]?.[symbol];
-            if (!Array.isArray(symbolData)) return []; // It's okay to have no liquidations
+            if (!Array.isArray(symbolData)) return [];
             return symbolData.map(d => ({
                 time: d.t,
                 value: d.q * d.p,
