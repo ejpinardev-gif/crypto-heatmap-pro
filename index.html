@@ -282,6 +282,70 @@
             }
         }
         
+        function normalizeTimestamp(raw) {
+            if (typeof raw === 'number') {
+                return raw > 1e12 ? Math.floor(raw / 1000) : Math.floor(raw);
+            }
+            if (typeof raw === 'string' && raw.trim() !== '') {
+                const numericCandidate = Number(raw);
+                if (!Number.isNaN(numericCandidate)) {
+                    return numericCandidate > 1e12 ? Math.floor(numericCandidate / 1000) : Math.floor(numericCandidate);
+                }
+                const parsedDate = new Date(raw);
+                if (!Number.isNaN(parsedDate.getTime())) {
+                    return Math.floor(parsedDate.getTime() / 1000);
+                }
+            }
+            return null;
+        }
+
+        function toNumber(value, fallback = 0) {
+            if (value === null || value === undefined || value === '') return fallback;
+            const numeric = Number(value);
+            return Number.isFinite(numeric) ? numeric : fallback;
+        }
+
+        function unwrapCoinalyzeSeries(payload, symbol) {
+            if (!payload) return [];
+
+            const tryFromObject = (obj) => {
+                if (!obj || typeof obj !== 'object') return null;
+                if (symbol && Array.isArray(obj[symbol])) return obj[symbol];
+                if (Array.isArray(obj.data)) return obj.data;
+                if (Array.isArray(obj.records)) return obj.records;
+                if (Array.isArray(obj.series)) return obj.series;
+                const firstArray = Object.values(obj).find(item => Array.isArray(item));
+                return Array.isArray(firstArray) ? firstArray : null;
+            };
+
+            if (Array.isArray(payload)) {
+                for (const item of payload) {
+                    if (Array.isArray(item)) return item;
+                    const fromObject = tryFromObject(item);
+                    if (fromObject) return fromObject;
+                }
+            } else {
+                const fromRoot = tryFromObject(payload);
+                if (fromRoot) return fromRoot;
+            }
+
+            return [];
+        }
+
+        function resolveLiquidationSide(entry) {
+            const side = entry?.m ?? entry?.side ?? entry?.direction ?? entry?.positionSide;
+            if (typeof side === 'string') {
+                const normalized = side.toLowerCase();
+                if (normalized.includes('short') || normalized.includes('sell')) return 'short';
+                if (normalized.includes('long') || normalized.includes('buy')) return 'long';
+            } else if (typeof side === 'boolean') {
+                return side ? 'short' : 'long';
+            } else if (typeof side === 'number') {
+                return side < 0 ? 'short' : 'long';
+            }
+            return 'long';
+        }
+
         async function fetchFromProxy(endpoint, params) {
             const url = new URL(`/api/coinalyze`, window.location.origin);
             url.searchParams.append('endpoint', endpoint);
@@ -310,28 +374,74 @@
         }
 
         async function fetchKlines(symbol, interval, from, to) {
-            const coinalyzeInterval = coinalyzeIntervalMap[interval];
+            const coinalyzeInterval = coinalyzeIntervalMap[interval] || interval;
             const data = await fetchFromProxy('ohlcv', { symbols: symbol, interval: coinalyzeInterval, from, to });
-            if (!Array.isArray(data)) throw new Error(`Coinalyze OHLCV API did not return valid data. Response: ${JSON.stringify(data)}`);
-            return data.map(d => ({ time: d.t, open: d.o, high: d.h, low: d.l, close: d.c, volume: d.v }));
+            const symbolData = unwrapCoinalyzeSeries(data, symbol);
+            if (!Array.isArray(symbolData) || symbolData.length === 0) {
+                throw new Error(`Coinalyze OHLCV API did not return valid data. Response: ${JSON.stringify(data)}`);
+            }
+            return symbolData.map(entry => {
+                if (Array.isArray(entry)) {
+                    const [rawTime, open, high, low, close, volume] = entry;
+                    const time = normalizeTimestamp(rawTime);
+                    if (!time) return null;
+                    return {
+                        time,
+                        open: toNumber(open),
+                        high: toNumber(high),
+                        low: toNumber(low),
+                        close: toNumber(close),
+                        volume: toNumber(volume)
+                    };
+                }
+                const time = normalizeTimestamp(entry.t ?? entry.time ?? entry.timestamp);
+                if (!time) return null;
+                return {
+                    time,
+                    open: toNumber(entry.o ?? entry.open ?? entry.Open),
+                    high: toNumber(entry.h ?? entry.high ?? entry.High),
+                    low: toNumber(entry.l ?? entry.low ?? entry.Low),
+                    close: toNumber(entry.c ?? entry.close ?? entry.Close),
+                    volume: toNumber(entry.v ?? entry.volume ?? entry.quoteVolume ?? entry.baseVolume)
+                };
+            }).filter(Boolean);
         }
 
         async function fetchOpenInterest(symbol, interval, from, to) {
-            const coinalyzeInterval = coinalyzeIntervalMap[interval];
+            const coinalyzeInterval = coinalyzeIntervalMap[interval] || interval;
             const data = await fetchFromProxy('open-interest-history', { symbols: symbol, interval: coinalyzeInterval, from, to });
-            if (!Array.isArray(data)) throw new Error(`Coinalyze Open Interest API did not return valid data. Response: ${JSON.stringify(data)}`);
-            return data.map(d => ({ time: d.t, value: d.v }));
+            const symbolData = unwrapCoinalyzeSeries(data, symbol);
+            if (!Array.isArray(symbolData) || symbolData.length === 0) {
+                throw new Error(`Coinalyze Open Interest API did not return valid data. Response: ${JSON.stringify(data)}`);
+            }
+            return symbolData.map(entry => {
+                const time = normalizeTimestamp(entry.t ?? entry.time ?? entry.timestamp);
+                if (!time) return null;
+                const value = toNumber(entry.v ?? entry.value ?? entry.oi ?? entry.openInterest);
+                return { time, value };
+            }).filter(Boolean);
         }
 
         async function fetchLiquidations(symbol, interval, from, to) {
-            const coinalyzeInterval = coinalyzeIntervalMap[interval];
+            const coinalyzeInterval = coinalyzeIntervalMap[interval] || interval;
             const data = await fetchFromProxy('liquidation-history', { symbols: symbol, interval: coinalyzeInterval, from, to });
-            if (!Array.isArray(data)) return [];
-            return data.map(d => ({
-                time: d.t,
-                value: d.q * d.p,
-                type: d.m ? 'short' : 'long'
-            }));
+            const symbolData = unwrapCoinalyzeSeries(data, symbol);
+            if (!Array.isArray(symbolData) || symbolData.length === 0) return [];
+            return symbolData.map(entry => {
+                const time = normalizeTimestamp(entry.t ?? entry.time ?? entry.timestamp);
+                if (!time) return null;
+                const price = toNumber(entry.p ?? entry.price ?? entry.markPrice, 1);
+                const quantity = toNumber(entry.q ?? entry.quantity ?? entry.size ?? entry.qty);
+                const explicitValue = entry.v ?? entry.value ?? entry.liquidationValue ?? entry.notionalValue;
+                const computedValue = toNumber(explicitValue, quantity && price ? quantity * price : 0);
+                if (computedValue <= 0) return null;
+                return {
+                    time,
+                    value: computedValue,
+                    type: resolveLiquidationSide(entry)
+                };
+            }).filter(Boolean);
+        }
         }
 
         async function updateChartData() {
