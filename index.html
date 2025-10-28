@@ -200,13 +200,22 @@
         let isUpdating = false;
         let isDrawingMode = false;
 
-        const coinalyzeIntervalMap = {
-            '1m': '1min',
-            '5m': '5min',
-            '15m': '15min',
-            '1h': '1hour',
-            '4h': '4hour',
-            '1d': '1day'
+        const binanceKlineIntervalMap = {
+            '1m': '1m',
+            '5m': '5m',
+            '15m': '15m',
+            '1h': '1h',
+            '4h': '4h',
+            '1d': '1d'
+        };
+
+        const binanceOpenInterestIntervalMap = {
+            '1m': '5m',
+            '5m': '5m',
+            '15m': '15m',
+            '1h': '1h',
+            '4h': '4h',
+            '1d': '1d'
         };
 
         const intervalToSeconds = {
@@ -305,33 +314,6 @@
             return Number.isFinite(numeric) ? numeric : fallback;
         }
 
-        function unwrapCoinalyzeSeries(payload, symbol) {
-            if (!payload) return [];
-
-            const tryFromObject = (obj) => {
-                if (!obj || typeof obj !== 'object') return null;
-                if (symbol && Array.isArray(obj[symbol])) return obj[symbol];
-                if (Array.isArray(obj.data)) return obj.data;
-                if (Array.isArray(obj.records)) return obj.records;
-                if (Array.isArray(obj.series)) return obj.series;
-                const firstArray = Object.values(obj).find(item => Array.isArray(item));
-                return Array.isArray(firstArray) ? firstArray : null;
-            };
-
-            if (Array.isArray(payload)) {
-                for (const item of payload) {
-                    if (Array.isArray(item)) return item;
-                    const fromObject = tryFromObject(item);
-                    if (fromObject) return fromObject;
-                }
-            } else {
-                const fromRoot = tryFromObject(payload);
-                if (fromRoot) return fromRoot;
-            }
-
-            return [];
-        }
-
         function resolveLiquidationSide(entry) {
             const side = entry?.m ?? entry?.side ?? entry?.direction ?? entry?.positionSide;
             if (typeof side === 'string') {
@@ -374,73 +356,69 @@
         }
 
         async function fetchKlines(symbol, interval, from, to) {
-            const coinalyzeInterval = coinalyzeIntervalMap[interval] || interval;
-            const data = await fetchFromProxy('ohlcv', { symbols: symbol, interval: coinalyzeInterval, from, to });
-            const symbolData = unwrapCoinalyzeSeries(data, symbol);
-            if (!Array.isArray(symbolData) || symbolData.length === 0) {
-                throw new Error(`Coinalyze OHLCV API did not return valid data. Response: ${JSON.stringify(data)}`);
+            const binanceInterval = binanceKlineIntervalMap[interval] || interval;
+            const data = await fetchFromProxy('ohlcv', { symbol, interval: binanceInterval, startTime: from, endTime: to, limit: 500 });
+            const candles = data?.candles;
+            if (!Array.isArray(candles) || candles.length === 0) {
+                throw new Error(`Binance kline API did not return data. Response: ${JSON.stringify(data)}`);
             }
-            return symbolData.map(entry => {
-                if (Array.isArray(entry)) {
-                    const [rawTime, open, high, low, close, volume] = entry;
-                    const time = normalizeTimestamp(rawTime);
-                    if (!time) return null;
-                    return {
-                        time,
-                        open: toNumber(open),
-                        high: toNumber(high),
-                        low: toNumber(low),
-                        close: toNumber(close),
-                        volume: toNumber(volume)
-                    };
-                }
-                const time = normalizeTimestamp(entry.t ?? entry.time ?? entry.timestamp);
+            return candles.map(entry => {
+                const time = normalizeTimestamp(entry.openTime ?? entry.time ?? entry.t);
                 if (!time) return null;
                 return {
                     time,
-                    open: toNumber(entry.o ?? entry.open ?? entry.Open),
-                    high: toNumber(entry.h ?? entry.high ?? entry.High),
-                    low: toNumber(entry.l ?? entry.low ?? entry.Low),
-                    close: toNumber(entry.c ?? entry.close ?? entry.Close),
-                    volume: toNumber(entry.v ?? entry.volume ?? entry.quoteVolume ?? entry.baseVolume)
+                    open: toNumber(entry.open ?? entry.o),
+                    high: toNumber(entry.high ?? entry.h),
+                    low: toNumber(entry.low ?? entry.l),
+                    close: toNumber(entry.close ?? entry.c),
+                    volume: toNumber(entry.volume ?? entry.v ?? entry.quoteVolume)
                 };
             }).filter(Boolean);
         }
 
         async function fetchOpenInterest(symbol, interval, from, to) {
-            const coinalyzeInterval = coinalyzeIntervalMap[interval] || interval;
-            const data = await fetchFromProxy('open-interest-history', { symbols: symbol, interval: coinalyzeInterval, from, to });
-            const symbolData = unwrapCoinalyzeSeries(data, symbol);
-            if (!Array.isArray(symbolData) || symbolData.length === 0) {
-                throw new Error(`Coinalyze Open Interest API did not return valid data. Response: ${JSON.stringify(data)}`);
+            const binanceInterval = binanceOpenInterestIntervalMap[interval] || interval;
+            const data = await fetchFromProxy('open-interest-history', { symbol, interval: binanceInterval, limit: 500 });
+            const records = data?.records;
+            if (!Array.isArray(records) || records.length === 0) {
+                throw new Error(`Binance open interest API did not return data. Response: ${JSON.stringify(data)}`);
             }
-            return symbolData.map(entry => {
-                const time = normalizeTimestamp(entry.t ?? entry.time ?? entry.timestamp);
+            return records.map(entry => {
+                const time = normalizeTimestamp(entry.time ?? entry.timestamp);
                 if (!time) return null;
-                const value = toNumber(entry.v ?? entry.value ?? entry.oi ?? entry.openInterest);
+                const value = toNumber(entry.sumOpenInterest ?? entry.value);
                 return { time, value };
-            }).filter(Boolean);
+            }).filter(Boolean).filter(entry => {
+                if (!entry) return false;
+                if (from && entry.time < from) return false;
+                if (to && entry.time > to) return false;
+                return true;
+            }).sort((a, b) => a.time - b.time);
         }
 
         async function fetchLiquidations(symbol, interval, from, to) {
-            const coinalyzeInterval = coinalyzeIntervalMap[interval] || interval;
-            const data = await fetchFromProxy('liquidation-history', { symbols: symbol, interval: coinalyzeInterval, from, to });
-            const symbolData = unwrapCoinalyzeSeries(data, symbol);
-            if (!Array.isArray(symbolData) || symbolData.length === 0) return [];
-            return symbolData.map(entry => {
-                const time = normalizeTimestamp(entry.t ?? entry.time ?? entry.timestamp);
+            const data = await fetchFromProxy('liquidation-history', { symbol, limit: 500 });
+            const records = data?.records;
+            if (!Array.isArray(records) || records.length === 0) return [];
+            return records.map(entry => {
+                const time = normalizeTimestamp(entry.time ?? entry.timestamp);
                 if (!time) return null;
-                const price = toNumber(entry.p ?? entry.price ?? entry.markPrice, 1);
-                const quantity = toNumber(entry.q ?? entry.quantity ?? entry.size ?? entry.qty);
-                const explicitValue = entry.v ?? entry.value ?? entry.liquidationValue ?? entry.notionalValue;
-                const computedValue = toNumber(explicitValue, quantity && price ? quantity * price : 0);
-                if (computedValue <= 0) return null;
-                return {
+                const price = toNumber(entry.price ?? entry.markPrice ?? entry.avgPrice, 1);
+                const quantity = toNumber(entry.quantity ?? entry.executedQty ?? entry.origQty);
+                const value = toNumber(entry.value ?? price * quantity);
+                if (value <= 0) return null;
+                const mapped = {
                     time,
-                    value: computedValue,
+                    value,
                     type: resolveLiquidationSide(entry)
                 };
-            }).filter(Boolean);
+                return mapped;
+            }).filter(Boolean).filter(entry => {
+                if (!entry) return false;
+                if (from && entry.time < from) return false;
+                if (to && entry.time > to) return false;
+                return true;
+            }).sort((a, b) => a.time - b.time);
         }
 
 
@@ -450,16 +428,16 @@
             loader.classList.remove('hidden');
             errorOverlay.classList.add('hidden');
             try {
-                const coinalyzeSymbol = `${currentSymbol}.PERP_BINANCE`;
+                const symbol = currentSymbol;
                 
                 const to = Math.floor(Date.now() / 1000);
                 const intervalSeconds = intervalToSeconds[currentInterval] || 3600;
                 const from = to - (500 * intervalSeconds); // Fetch approx 500 candles worth of data
 
                 const results = await Promise.allSettled([
-                    fetchKlines(coinalyzeSymbol, currentInterval, from, to),
-                    fetchOpenInterest(coinalyzeSymbol, currentInterval, from, to),
-                    fetchLiquidations(coinalyzeSymbol, currentInterval, from, to)
+                    fetchKlines(symbol, currentInterval, from, to),
+                    fetchOpenInterest(symbol, currentInterval, from, to),
+                    fetchLiquidations(symbol, currentInterval, from, to)
                 ]);
 
                 const klinesResult = results[0];
