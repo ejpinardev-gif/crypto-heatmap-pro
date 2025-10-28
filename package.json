@@ -4,7 +4,10 @@
   "description": "Proxy backend for Coinalyze API",
   "main": "api/coinalyze.js",
   "scripts": {
-    "start": "node api/coinalyze.js"
+    "start": "node api/coinalyze.js",
+    "capture:snapshot": "node scripts/captureSnapshot.js",
+    "capture:schedule": "node scripts/snapshotScheduler.js",
+    "capture:all": "node scripts/captureAllSymbols.js"
   },
   "author": "",
   "license": "ISC",

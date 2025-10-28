@@ -703,8 +703,9 @@
                 
                 const lineToRemove = userDrawnLines.find(line => {
                     const linePrice = line.options().price;
-                    const priceRange = chart.priceScale('right').heightToCoordinate(10) - chart.priceScale('right').heightToCoordinate(0);
-                    return Math.abs(linePrice - price) < priceRange;
+                    const lineCoordinate = candlestickSeries.priceToCoordinate(linePrice);
+                    if (lineCoordinate === null || lineCoordinate === undefined) return false;
+                    return Math.abs(lineCoordinate - param.point.y) < 5;
                 });
 
                 if (lineToRemove) {

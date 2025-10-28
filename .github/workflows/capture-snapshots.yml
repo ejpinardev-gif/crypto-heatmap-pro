@@ -1,0 +1,38 @@
+name: Capture Market Snapshots
+
+# Runs hourly to capture Bybit market data snapshots for configured symbols.
+# Adjust the cron expression or environment variables below to change cadence or coverage.
+on:
+  schedule:
+    - cron: "0 * * * *" # every hour
+  workflow_dispatch:
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Capture snapshots
+        env:
+          SNAPSHOT_SYMBOLS: BTCUSDT,ETHUSDT,BNBUSDT,SOLUSDT,XRPUSDT,WLDUSDT,COAIUSDT,GIGGLEUSDT
+          SNAPSHOT_INTERVALS: 4h
+        run: npm run capture:all
+
+      - name: Archive snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshots-${{ github.run_id }}
+          path: snapshots
+          if-no-files-found: warn
