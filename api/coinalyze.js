@@ -1,8 +1,6 @@
 const axios = require('axios');
-const { URLSearchParams } = require('url');
 
 module.exports = async (req, res) => {
-    // Manually parse query parameters from the request URL
     const requestUrl = new URL(req.url, `http://${req.headers.host}`);
     const params = Object.fromEntries(requestUrl.searchParams.entries());
     const { endpoint, ...apiParams } = params;
@@ -14,16 +12,29 @@ module.exports = async (req, res) => {
     }
 
     if (!endpoint) {
-        return res.status(400).json({ error: 'API endpoint is not specified in the request.' });
+        return res.status(400).json({ error: 'API endpoint is not specified.' });
     }
 
-    const coinalyzeUrl = `https://api.coinalyze.net/v1/${endpoint}`;
+    let coinalyzeUrl;
+    let requestConfig = {
+        headers: { 'api-key': COINALYZE_API_KEY }
+    };
+
+    // Coinalyze has an inconsistent API design. The OHLCV endpoint uses path parameters,
+    // while others use query parameters. We need to handle this special case.
+    if (endpoint === 'ohlcv') {
+        const { symbols, interval } = apiParams;
+        if (!symbols || !interval) {
+            return res.status(400).json({ error: 'Missing required parameters for ohlcv: symbols, interval' });
+        }
+        coinalyzeUrl = `https://api.coinalyze.net/v1/ohlcv/${interval}/${symbols}`;
+    } else {
+        coinalyzeUrl = `https://api.coinalyze.net/v1/${endpoint}`;
+        requestConfig.params = apiParams; // Pass other params as query string
+    }
 
     try {
-        const apiResponse = await axios.get(coinalyzeUrl, {
-            params: apiParams, // Pass the extracted params to Coinalyze
-            headers: { 'api-key': COINALYZE_API_KEY }
-        });
+        const apiResponse = await axios.get(coinalyzeUrl, requestConfig);
 
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.status(200).json(apiResponse.data);
@@ -32,6 +43,8 @@ module.exports = async (req, res) => {
         if (error.response) {
             res.status(error.response.status).json({ 
                 error: 'Coinalyze API Error', 
+                endpoint: endpoint,
+                url: coinalyzeUrl,
                 details: error.response.data 
             });
         } else if (error.request) {
