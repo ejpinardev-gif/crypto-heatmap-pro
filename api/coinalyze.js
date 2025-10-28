@@ -24,6 +24,13 @@ module.exports = async (req, res) => {
             }
         };
 
+        const includeOptionalParams = () => {
+            const paramsWithOptional = { ...remainingParams };
+            if (symbols) paramsWithOptional.symbols = symbols;
+            if (interval) paramsWithOptional.interval = interval;
+            return paramsWithOptional;
+        };
+
         switch (endpoint) {
             case 'ohlcv':
                 ensure(symbols, 'symbols query param is required for ohlcv endpoint.');
@@ -36,30 +43,26 @@ module.exports = async (req, res) => {
                 ensure(symbols, 'symbols query param is required for open-interest-history endpoint.');
                 ensure(interval, 'interval query param is required for open-interest-history endpoint.');
                 return {
-                    url: `https://api.coinalyze.net/v1/open-interest-history/${interval}/${symbols}`,
-                    params: remainingParams
+                    url: `https://api.coinalyze.net/v1/open-interest-history`,
+                    params: { ...remainingParams, symbols, interval }
                 };
             case 'liquidation-history':
                 ensure(symbols, 'symbols query param is required for liquidation-history endpoint.');
                 if (interval) {
                     return {
-                        url: `https://api.coinalyze.net/v1/liquidation-history/${interval}/${symbols}`,
-                        params: remainingParams
+                        url: `https://api.coinalyze.net/v1/liquidation-history`,
+                        params: { ...remainingParams, symbols, interval }
                     };
                 }
                 return {
-                    url: `https://api.coinalyze.net/v1/liquidation-history/${symbols}`,
-                    params: remainingParams
+                    url: `https://api.coinalyze.net/v1/liquidation-history`,
+                    params: { ...remainingParams, symbols }
                 };
-            default: {
-                const paramsWithOptional = { ...remainingParams };
-                if (symbols) paramsWithOptional.symbols = symbols;
-                if (interval) paramsWithOptional.interval = interval;
+            default:
                 return {
                     url: `https://api.coinalyze.net/v1/${endpoint}`,
-                    params: paramsWithOptional
+                    params: includeOptionalParams()
                 };
-            }
         }
     };
 
