@@ -200,7 +200,7 @@
         let isUpdating = false;
         let isDrawingMode = false;
 
-        const binanceKlineIntervalMap = {
+        const bybitKlineIntervalMap = {
             '1m': '1m',
             '5m': '5m',
             '15m': '15m',
@@ -209,10 +209,10 @@
             '1d': '1d'
         };
 
-        const binanceOpenInterestIntervalMap = {
-            '1m': '5m',
-            '5m': '5m',
-            '15m': '15m',
+        const bybitOpenInterestIntervalMap = {
+            '1m': '5min',
+            '5m': '5min',
+            '15m': '15min',
             '1h': '1h',
             '4h': '4h',
             '1d': '1d'
@@ -356,11 +356,11 @@
         }
 
         async function fetchKlines(symbol, interval, from, to) {
-            const binanceInterval = binanceKlineIntervalMap[interval] || interval;
-            const data = await fetchFromProxy('ohlcv', { symbol, interval: binanceInterval, startTime: from, endTime: to, limit: 500 });
+            const bybitInterval = bybitKlineIntervalMap[interval] || interval;
+            const data = await fetchFromProxy('ohlcv', { symbol, interval: bybitInterval, startTime: from, endTime: to, limit: 500 });
             const candles = data?.candles;
             if (!Array.isArray(candles) || candles.length === 0) {
-                throw new Error(`Binance kline API did not return data. Response: ${JSON.stringify(data)}`);
+                throw new Error(`Bybit kline API did not return data. Response: ${JSON.stringify(data)}`);
             }
             return candles.map(entry => {
                 const time = normalizeTimestamp(entry.openTime ?? entry.time ?? entry.t);
@@ -373,20 +373,20 @@
                     close: toNumber(entry.close ?? entry.c),
                     volume: toNumber(entry.volume ?? entry.v ?? entry.quoteVolume)
                 };
-            }).filter(Boolean);
+            }).filter(Boolean).sort((a, b) => a.time - b.time);
         }
 
         async function fetchOpenInterest(symbol, interval, from, to) {
-            const binanceInterval = binanceOpenInterestIntervalMap[interval] || interval;
-            const data = await fetchFromProxy('open-interest-history', { symbol, interval: binanceInterval, limit: 500 });
+            const bybitInterval = bybitOpenInterestIntervalMap[interval] || interval;
+            const data = await fetchFromProxy('open-interest-history', { symbol, interval: bybitInterval, startTime: from, endTime: to, limit: 500 });
             const records = data?.records;
             if (!Array.isArray(records) || records.length === 0) {
-                throw new Error(`Binance open interest API did not return data. Response: ${JSON.stringify(data)}`);
+                throw new Error(`Bybit open interest API did not return data. Response: ${JSON.stringify(data)}`);
             }
             return records.map(entry => {
                 const time = normalizeTimestamp(entry.time ?? entry.timestamp);
                 if (!time) return null;
-                const value = toNumber(entry.sumOpenInterest ?? entry.value);
+                const value = toNumber(entry.openInterest ?? entry.sumOpenInterest ?? entry.value);
                 return { time, value };
             }).filter(Boolean).filter(entry => {
                 if (!entry) return false;
@@ -397,7 +397,7 @@
         }
 
         async function fetchLiquidations(symbol, interval, from, to) {
-            const data = await fetchFromProxy('liquidation-history', { symbol, limit: 500 });
+            const data = await fetchFromProxy('liquidation-history', { symbol, startTime: from, endTime: to, limit: 500 });
             const records = data?.records;
             if (!Array.isArray(records) || records.length === 0) return [];
             return records.map(entry => {
