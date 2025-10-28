@@ -17,20 +17,26 @@ module.exports = async (req, res) => {
 
     let coinalyzeUrl;
     let requestConfig = {
-        headers: { 'api-key': COINALYZE_API_KEY }
+        headers: { 'api-key': COINALYZE_API_KEY },
+        params: apiParams // Default to using all received params as query params
     };
 
-    // Coinalyze has an inconsistent API design. The OHLCV endpoint uses path parameters,
-    // while others use query parameters. We need to handle this special case.
+    // Special handling for the OHLCV endpoint which uses a different URL structure
     if (endpoint === 'ohlcv') {
         const { symbols, interval } = apiParams;
         if (!symbols || !interval) {
             return res.status(400).json({ error: 'Missing required parameters for ohlcv: symbols, interval' });
         }
+        
+        // Build the URL with path parameters
         coinalyzeUrl = `https://api.coinalyze.net/v1/ohlcv/${interval}/${symbols}`;
+        
+        // Remove the params that are now in the path to avoid sending them twice
+        delete requestConfig.params.symbols;
+        delete requestConfig.params.interval;
+        // The remaining params (from, to) will be correctly sent as a query string
     } else {
         coinalyzeUrl = `https://api.coinalyze.net/v1/${endpoint}`;
-        requestConfig.params = apiParams; // Pass other params as query string
     }
 
     try {
@@ -45,6 +51,7 @@ module.exports = async (req, res) => {
                 error: 'Coinalyze API Error', 
                 endpoint: endpoint,
                 url: coinalyzeUrl,
+                params: requestConfig.params,
                 details: error.response.data 
             });
         } else if (error.request) {
