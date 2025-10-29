@@ -9,76 +9,106 @@
     <script src="https://unpkg.com/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         :root {
-            --background-color: #131722;
-            --text-color: #d1d4dc;
-            --header-bg-color: #1e222d;
-            --control-bg-color: #2a2e39;
-            --border-color: #485c7b;
+            --background-surface: #0b1220;
+            --background-gradient: radial-gradient(circle at 20% -10%, rgba(59, 130, 246, 0.35), transparent 55%), radial-gradient(circle at 80% -10%, rgba(236, 72, 153, 0.25), transparent 45%), #0b1220;
+            --card-bg: rgba(20, 26, 38, 0.75);
+            --text-color: #d8dde6;
+            --muted-text: #9ba1b3;
+            --border-color: rgba(148, 163, 184, 0.08);
+            --accent: #3b82f6;
         }
 
         [data-theme='light'] {
-            --background-color: #ffffff;
-            --text-color: #131722;
-            --header-bg-color: #f8f9fa;
-            --control-bg-color: #e9ecef;
-            --border-color: #dee2e6;
+            --background-surface: #f5f7fb;
+            --background-gradient: radial-gradient(circle at 20% -10%, rgba(59, 130, 246, 0.2), transparent 55%), radial-gradient(circle at 70% -10%, rgba(236, 72, 153, 0.15), transparent 50%), #f5f7fb;
+            --card-bg: rgba(255, 255, 255, 0.8);
+            --text-color: #1f2937;
+            --muted-text: #6b7280;
+            --border-color: rgba(148, 163, 184, 0.18);
+            --accent: #2563eb;
         }
 
         body {
             font-family: 'Inter', sans-serif;
-            background-color: var(--background-color);
+            min-height: 100vh;
+            background: var(--background-gradient);
             color: var(--text-color);
         }
+
         header {
-            background-color: var(--header-bg-color);
-            border-bottom-color: var(--border-color);
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.55));
+            border-bottom: 1px solid var(--border-color);
+            backdrop-filter: blur(18px);
         }
-        #controls select, #controls > div, #controls > button {
-            background-color: var(--control-bg-color);
+
+        #controls > * {
+            background-color: var(--card-bg);
             border-color: var(--border-color);
             color: var(--text-color);
+            backdrop-filter: blur(12px);
         }
+
         #legend, #liquidity-slider-container label {
-            color: #9b9ea3;
+            color: var(--muted-text);
         }
-        [data-theme='light'] #legend, [data-theme='light'] #liquidity-slider-container label {
-            color: #5a5e69;
-        }
+
         #slider-value {
-             background-color: #4a4e59;
+             background-color: rgba(59, 130, 246, 0.15);
+             color: var(--text-color);
         }
+
         [data-theme='light'] #slider-value {
-             background-color: #e0e3eb;
-             color: #131722;
+             background-color: rgba(59, 130, 246, 0.12);
+             color: #1f2937;
+        }
+
+        #liquidity-slider {
+            accent-color: var(--accent);
+            height: 6px;
+        }
+
+        #liquidity-slider::-webkit-slider-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 999px;
+            background: var(--accent);
+            border: 2px solid rgba(255, 255, 255, 0.6);
         }
 
         /* Custom scrollbar for a better look */
         ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #1e222d; }
-        ::-webkit-scrollbar-thumb { background: #4a4e59; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #5a5e69; }
-        [data-theme='light'] ::-webkit-scrollbar-track { background: #f1f1f1; }
-        [data-theme='light'] ::-webkit-scrollbar-thumb { background: #adb5bd; }
-        [data-theme='light'] ::-webkit-scrollbar-thumb:hover { background: #868e96; }
+        ::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.45); }
+        ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.45); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.7); }
 
         .control-button {
-            transition: background-color 0.2s ease, color 0.2s ease;
+            transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
         }
+
+        .control-button:hover {
+            transform: translateY(-1px);
+        }
+
         .control-button.active {
-            background-color: #2962FF;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.85), rgba(59, 130, 246, 0.6));
             color: #fff;
+            box-shadow: 0 8px 16px rgba(59, 130, 246, 0.2);
         }
+
         .indicator-label {
             position: absolute;
             left: 12px;
-            color: rgba(209, 212, 220, 0.7);
+            color: rgba(209, 212, 220, 0.65);
             font-size: 12px;
-            font-weight: bold;
+            font-weight: 600;
+            letter-spacing: 0.02em;
             pointer-events: none; /* Allows clicking through the label */
             z-index: 10;
+            text-transform: uppercase;
         }
+
         [data-theme='light'] .indicator-label {
-            color: rgba(25, 28, 32, 0.7);
+            color: rgba(55, 65, 81, 0.6);
         }
     </style>
 </head>
@@ -143,9 +173,9 @@
             </div>
             <!-- Liquidity Concentration Slider -->
             <div id="liquidity-slider-container" class="flex items-center gap-3 text-sm pt-2">
-                <label for="liquidity-slider" class="whitespace-nowrap">Concentración de Liquidez:</label>
-                <input type="range" id="liquidity-slider" min="0" max="100" value="0" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
-                <span id="slider-value" class="font-mono px-2 py-1 rounded-md">$0M</span>
+                <label for="liquidity-slider" class="whitespace-nowrap">Concentracion de Liquidez:</label>
+                <input type="range" id="liquidity-slider" min="0" max="100" step="1" value="0" class="w-full rounded-full appearance-none cursor-pointer">
+                <span id="slider-value" class="font-mono px-2 py-1 rounded-md">Todos</span>
             </div>
         </div>
     </header>
@@ -196,7 +226,8 @@
         let currentSymbol = 'BTCUSDT';
         let currentInterval = '4h';
         let selectedLeverages = [50];
-        let liquidityThreshold = 0;
+        let liquidityThresholdPct = 0;
+        let maxLiquidityObserved = 0;
         let isUpdating = false;
         let isDrawingMode = false;
 
@@ -230,14 +261,34 @@
         // --- Theme Options ---
         const themes = {
             dark: {
-                chart: { layout: { backgroundColor: '#131722', textColor: '#d1d4dc' }, grid: { vertLines: { visible: false }, horzLines: { visible: false } } },
-                candlestick: { upColor: '#26a69a', downColor: '#ef5350', borderDownColor: '#ef5350', borderUpColor: '#26a69a', wickDownColor: '#ef5350', wickUpColor: '#26a69a' },
-                volume: (close, open) => close >= open ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
+                chart: {
+                    layout: { backgroundColor: '#0f172a', textColor: '#e2e8f0' },
+                    grid: { vertLines: { visible: false }, horzLines: { visible: false } }
+                },
+                candlestick: {
+                    upColor: '#10b981',
+                    downColor: '#f97316',
+                    borderDownColor: '#fb7185',
+                    borderUpColor: '#34d399',
+                    wickDownColor: '#fb7185',
+                    wickUpColor: '#34d399'
+                },
+                volume: (close, open) => close >= open ? 'rgba(16, 185, 129, 0.55)' : 'rgba(249, 115, 22, 0.55)'
             },
             light: {
-                chart: { layout: { backgroundColor: '#ffffff', textColor: '#131722' }, grid: { vertLines: { visible: false }, horzLines: { visible: false } } },
-                candlestick: { upColor: '#26a69a', downColor: '#ef5350', borderDownColor: '#ef5350', borderUpColor: '#26a69a', wickDownColor: '#ef5350', wickUpColor: '#26a69a' },
-                volume: (close, open) => close >= open ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
+                chart: {
+                    layout: { backgroundColor: '#ffffff', textColor: '#1f2937' },
+                    grid: { vertLines: { visible: false }, horzLines: { visible: false } }
+                },
+                candlestick: {
+                    upColor: '#0ea5e9',
+                    downColor: '#f87171',
+                    borderDownColor: '#ef4444',
+                    borderUpColor: '#38bdf8',
+                    wickDownColor: '#f87171',
+                    wickUpColor: '#38bdf8'
+                },
+                volume: (close, open) => close >= open ? 'rgba(59, 130, 246, 0.45)' : 'rgba(239, 68, 68, 0.45)'
             }
         };
         let currentTheme = 'dark';
@@ -313,6 +364,23 @@
             const numeric = Number(value);
             return Number.isFinite(numeric) ? numeric : fallback;
         }
+
+        const formatLiquidityValue = (value) => {
+            if (!value || value <= 0) return '$0';
+            if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+            if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
+            if (value >= 1e3) return `$${(value / 1e3).toFixed(2)}K`;
+            return `$${value.toFixed(0)}`;
+        };
+
+        const updateLiquiditySliderLabel = () => {
+            const thresholdValue = maxLiquidityObserved * liquidityThresholdPct;
+            if (!maxLiquidityObserved || liquidityThresholdPct === 0) {
+                sliderValueEl.textContent = 'Todos';
+                return;
+            }
+            sliderValueEl.textContent = formatLiquidityValue(thresholdValue);
+        };
 
         function resolveLiquidationSide(entry) {
             const side = entry?.m ?? entry?.side ?? entry?.direction ?? entry?.positionSide;
@@ -576,8 +644,10 @@
             let poolsArray = Array.from(liquidationPools.entries()).map(([price, data]) => ({ price, ...data }));
             
             const maxLiquidity = Math.max(...poolsArray.map(p => p.volume * p.price), 0);
-            liquiditySlider.max = maxLiquidity;
-            const filteredPools = poolsArray.filter(p => (p.volume * p.price) >= liquidityThreshold);
+            maxLiquidityObserved = maxLiquidity;
+            updateLiquiditySliderLabel();
+            const thresholdValue = maxLiquidityObserved * liquidityThresholdPct;
+            const filteredPools = poolsArray.filter(p => (p.volume * p.price) >= thresholdValue);
             
             const longPools = filteredPools.filter(p => p.price < lastPrice).sort((a,b) => b.volume - a.volume);
             const shortPools = filteredPools.filter(p => p.price > lastPrice).sort((a,b) => b.volume - a.volume);
@@ -596,8 +666,10 @@
                     const intensity = Math.min(1, pool.volume / maxVolume);
                     const isLong = type === 'long';
                     
-                    const color = isLong ? `rgba(0, 255, 0, ${0.05 + intensity * 0.4})` : `rgba(255, 0, 0, ${0.05 + intensity * 0.4})`;
-                    const lineWidth = 0.5 + intensity * 3.5;
+                    const color = isLong
+                        ? `rgba(34, 197, 94, ${0.12 + intensity * 0.55})`
+                        : `rgba(239, 68, 68, ${0.12 + intensity * 0.55})`;
+                    const lineWidth = 1 + intensity * 3;
                     
                     const series = seriesArray[i];
                     series.applyOptions({ color, lineWidth });
@@ -612,8 +684,8 @@
                             color: 'transparent',
                             axisLabelVisible: true,
                             title: title,
-                            axisLabelColor: isLong ? '#26a69a' : '#ef5350',
-                            axisLabelTextColor: '#ffffff',
+                            axisLabelColor: isLong ? '#14b8a6' : '#f87171',
+                            axisLabelTextColor: '#f8fafc',
                         });
                         activePriceLines.push(labelLine);
                     }
@@ -683,6 +755,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             initializeChart();
             applyTheme(currentTheme);
+            updateLiquiditySliderLabel();
             updateChartData();
             setInterval(() => {
                 if (!isUpdating) {
@@ -759,8 +832,8 @@
             });
 
             liquiditySlider.addEventListener('input', (e) => {
-                liquidityThreshold = parseFloat(e.target.value);
-                sliderValueEl.textContent = `$${(liquidityThreshold / 1e6).toFixed(1)}M`;
+                liquidityThresholdPct = Number(e.target.value) / 100;
+                updateLiquiditySliderLabel();
                 renderAllVisuals();
             });
 
