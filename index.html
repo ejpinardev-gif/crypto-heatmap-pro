@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
@@ -173,7 +173,7 @@
             </div>
             <!-- Liquidity Concentration Slider -->
             <div id="liquidity-slider-container" class="flex items-center gap-3 text-sm pt-2">
-                <label for="liquidity-slider" class="whitespace-nowrap">Concentracion de Liquidez:</label>
+                <label for="liquidity-slider" class="whitespace-nowrap">Concentraci�n de Liquidez:</label>
                 <input type="range" id="liquidity-slider" min="0" max="100" step="1" value="0" class="w-full rounded-full appearance-none cursor-pointer">
                 <span id="slider-value" class="font-mono px-2 py-1 rounded-md">Todos</span>
             </div>
@@ -214,6 +214,13 @@
         const errorMessageEl = document.getElementById('error-message');
         const drawLineTool = document.getElementById('draw-line-tool');
 
+        const heatmapOverlayCanvas = document.createElement('canvas');
+        heatmapOverlayCanvas.id = 'liquidity-heatmap-overlay';
+        heatmapOverlayCanvas.className = 'absolute inset-0 pointer-events-none';
+        heatmapOverlayCanvas.style.zIndex = '6';
+        chartContainer.prepend(heatmapOverlayCanvas);
+        const heatmapOverlayCtx = heatmapOverlayCanvas.getContext('2d');
+
         // --- Chart State ---
         let chart;
         let candlestickSeries, volumeSeries, openInterestSeries, longLiqsSeries, shortLiqsSeries, oiVolRatioSeries;
@@ -221,13 +228,14 @@
         let historicalPriceLines = [], activePriceLines = [], userDrawnLines = [];
         let fetchedData = { klines: [], openInterest: [], liquidations: [], longLiqs: [], shortLiqs: [] };
         const HEATMAP_SERIES_COUNT = 150;
-        const VISIBLE_LABELS_COUNT = 5;
+        const VISIBLE_LABELS_COUNT = 8;
 
         let currentSymbol = 'BTCUSDT';
         let currentInterval = '4h';
         let selectedLeverages = [50];
         let liquidityThresholdPct = 0;
         let maxLiquidityObserved = 0;
+        let latestHeatmapClusters = { long: [], short: [] };
         let isUpdating = false;
         let isDrawingMode = false;
 
@@ -306,6 +314,7 @@
             }
             themeIconLight.classList.toggle('hidden', theme === 'dark');
             themeIconDark.classList.toggle('hidden', theme === 'light');
+            drawOverlayClusters();
         }
 
         function initializeChart() {
@@ -340,6 +349,8 @@
                 heatmapLongSeries.push(chart.addLineSeries(commonOptions));
                 heatmapShortSeries.push(chart.addLineSeries(commonOptions));
             }
+
+            resizeHeatmapOverlay();
         }
         
         function normalizeTimestamp(raw) {
@@ -380,6 +391,66 @@
                 return;
             }
             sliderValueEl.textContent = formatLiquidityValue(thresholdValue);
+        };
+
+        const resizeHeatmapOverlay = () => {
+            if (!heatmapOverlayCanvas) return;
+            const dpr = window.devicePixelRatio || 1;
+            const width = chartContainer.clientWidth;
+            const height = chartContainer.clientHeight;
+            heatmapOverlayCanvas.width = Math.max(1, Math.floor(width * dpr));
+            heatmapOverlayCanvas.height = Math.max(1, Math.floor(height * dpr));
+            heatmapOverlayCanvas.style.width = `${width}px`;
+            heatmapOverlayCanvas.style.height = `${height}px`;
+        };
+
+        const drawOverlayClusters = () => {
+            if (!heatmapOverlayCtx || !candlestickSeries || !chart || !latestHeatmapClusters) return;
+            resizeHeatmapOverlay();
+            const dpr = window.devicePixelRatio || 1;
+            heatmapOverlayCtx.save();
+            heatmapOverlayCtx.clearRect(0, 0, heatmapOverlayCanvas.width, heatmapOverlayCanvas.height);
+
+            const overlayWidth = 140 * dpr;
+            const padding = 20 * dpr;
+            const longX = padding;
+            const shortX = heatmapOverlayCanvas.width - overlayWidth - padding;
+
+            const renderCluster = (cluster, side, xStart) => {
+                const topCoord = candlestickSeries.priceToCoordinate(cluster.maxPrice);
+                const bottomCoord = candlestickSeries.priceToCoordinate(cluster.minPrice);
+                if (topCoord === null || bottomCoord === null || topCoord === undefined || bottomCoord === undefined) return;
+                const top = Math.min(topCoord, bottomCoord) * dpr;
+                const bottom = Math.max(topCoord, bottomCoord) * dpr;
+                const height = Math.max(4 * dpr, bottom - top);
+
+                const gradient = heatmapOverlayCtx.createLinearGradient(xStart, top, xStart + overlayWidth, bottom);
+                if (side === 'long') {
+                    gradient.addColorStop(0, 'rgba(34, 197, 94, 0.12)');
+                    gradient.addColorStop(0.5, 'rgba(16, 185, 129, 0.45)');
+                    gradient.addColorStop(1, 'rgba(6, 182, 212, 0.55)');
+                } else {
+                    gradient.addColorStop(0, 'rgba(239, 68, 68, 0.12)');
+                    gradient.addColorStop(0.5, 'rgba(248, 113, 113, 0.45)');
+                    gradient.addColorStop(1, 'rgba(249, 115, 22, 0.55)');
+                }
+                heatmapOverlayCtx.fillStyle = gradient;
+                heatmapOverlayCtx.fillRect(xStart, top, overlayWidth, height);
+
+                heatmapOverlayCtx.strokeStyle = side === 'long' ? 'rgba(34, 197, 94, 0.65)' : 'rgba(248, 113, 113, 0.65)';
+                heatmapOverlayCtx.lineWidth = 1.2 * dpr;
+                heatmapOverlayCtx.strokeRect(xStart, top, overlayWidth, height);
+
+                const text = formatLiquidityValue(cluster.totalValue);
+                heatmapOverlayCtx.fillStyle = currentTheme === 'dark' ? 'rgba(248, 250, 252, 0.92)' : 'rgba(15, 23, 42, 0.85)';
+                heatmapOverlayCtx.font = `${12 * dpr}px 'Inter', sans-serif`;
+                heatmapOverlayCtx.fillText(text, xStart + 10 * dpr, top + Math.min(height - 4 * dpr, 18 * dpr));
+            };
+
+            latestHeatmapClusters.long.forEach(cluster => renderCluster(cluster, 'long', longX));
+            latestHeatmapClusters.short.forEach(cluster => renderCluster(cluster, 'short', shortX));
+
+            heatmapOverlayCtx.restore();
         };
 
         function resolveLiquidationSide(entry) {
@@ -606,6 +677,8 @@
             activePriceLines = [];
             heatmapLongSeries.forEach(series => series.setData([]));
             heatmapShortSeries.forEach(series => series.setData([]));
+            latestHeatmapClusters = { long: [], short: [] };
+            drawOverlayClusters();
         }
 
         function calculateAndDrawActiveZones(klines, leverages, oiVolRatioData) {
@@ -648,19 +721,55 @@
             updateLiquiditySliderLabel();
             const thresholdValue = maxLiquidityObserved * liquidityThresholdPct;
             const filteredPools = poolsArray.filter(p => (p.volume * p.price) >= thresholdValue);
-            
-            const longPools = filteredPools.filter(p => p.price < lastPrice).sort((a,b) => b.volume - a.volume);
-            const shortPools = filteredPools.filter(p => p.price > lastPrice).sort((a,b) => b.volume - a.volume);
-            
-            const maxLongVol = longPools[0]?.volume || 1;
-            const maxShortVol = shortPools[0]?.volume || 1;
+
+            const clusterSpan = Math.max(priceStep * 4, (lastKline.high - lastKline.low) * 0.4 || priceStep);
+
+            const buildClusters = (pools, side) => {
+                if (!pools.length) return [];
+                const map = new Map();
+                pools.forEach(pool => {
+                    const clusterKey = Math.round(pool.price / clusterSpan);
+                    let cluster = map.get(clusterKey);
+                    if (!cluster) {
+                        cluster = {
+                            minPrice: pool.price,
+                            maxPrice: pool.price,
+                            volume: 0,
+                            totalValue: 0
+                        };
+                        map.set(clusterKey, cluster);
+                    }
+                    cluster.minPrice = Math.min(cluster.minPrice, pool.price);
+                    cluster.maxPrice = Math.max(cluster.maxPrice, pool.price);
+                    cluster.volume += pool.volume;
+                    cluster.totalValue += pool.volume * pool.price;
+                });
+                return Array.from(map.values())
+                    .map(cluster => {
+                        const centerPrice = (cluster.minPrice + cluster.maxPrice) / 2;
+                        return {
+                            ...cluster,
+                            price: centerPrice,
+                            centerPrice,
+                            side
+                        };
+                    })
+                    .sort((a, b) => b.totalValue - a.totalValue)
+                    .slice(0, 50);
+            };
+
+            const longClusters = buildClusters(filteredPools.filter(p => p.price < lastPrice), 'long');
+            const shortClusters = buildClusters(filteredPools.filter(p => p.price > lastPrice), 'short');
+
+            const maxLongVol = longClusters.length ? Math.max(...longClusters.map(c => c.volume)) : 1;
+            const maxShortVol = shortClusters.length ? Math.max(...shortClusters.map(c => c.volume)) : 1;
             
             const lastTime = klines[klines.length - 1].time;
             const intervalSeconds = klines.length > 1 ? klines[1].time - klines[0].time : 3600;
             const futureTime = lastTime + intervalSeconds * 10;
 
             const drawHeatmap = (pools, seriesArray, maxVolume, type) => {
-                const topPools = pools.slice(0, VISIBLE_LABELS_COUNT);
+                
                 
                 pools.slice(0, HEATMAP_SERIES_COUNT).forEach((pool, i) => {
                     const intensity = Math.min(1, pool.volume / maxVolume);
@@ -670,14 +779,14 @@
                         ? `rgba(34, 197, 94, ${0.12 + intensity * 0.55})`
                         : `rgba(239, 68, 68, ${0.12 + intensity * 0.55})`;
                     const lineWidth = 1 + intensity * 3;
-                    
+
                     const series = seriesArray[i];
                     series.applyOptions({ color, lineWidth });
                     series.setData([{ time: lastTime, value: pool.price }, { time: futureTime, value: pool.price }]);
 
-                    if (i < VISIBLE_LABELS_COUNT && pool.price === topPools[i].price) {
-                        const liquidityInUSD = pool.volume * pool.price;
-                        const title = `$${(liquidityInUSD / 1e6).toFixed(1)}M`;
+                    if (i < VISIBLE_LABELS_COUNT) {
+                        const liquidityInUSD = pool.totalValue;
+                        const title = formatLiquidityValue(liquidityInUSD);
                         
                         const labelLine = candlestickSeries.createPriceLine({
                             price: pool.price,
@@ -692,8 +801,14 @@
                 });
             };
 
-            drawHeatmap(longPools, heatmapLongSeries, maxLongVol, 'long');
-            drawHeatmap(shortPools, heatmapShortSeries, maxShortVol, 'short');
+            drawHeatmap(longClusters, heatmapLongSeries, maxLongVol, 'long');
+            drawHeatmap(shortClusters, heatmapShortSeries, maxShortVol, 'short');
+
+            latestHeatmapClusters = {
+                long: longClusters.slice(0, 25),
+                short: shortClusters.slice(0, 25)
+            };
+            drawOverlayClusters();
         }
 
         function findAndDrawHistoricalZones(klines, longLiqs, shortLiqs) {
@@ -749,7 +864,13 @@
             clearAllZones();
         }
         
-        function handleResize() { if (chart) chart.resize(chartContainer.clientWidth, chartContainer.clientHeight); }
+        function handleResize() {
+            if (chart) {
+                chart.resize(chartContainer.clientWidth, chartContainer.clientHeight);
+            }
+            resizeHeatmapOverlay();
+            drawOverlayClusters();
+        }
         
         // --- Event Listeners ---
         document.addEventListener('DOMContentLoaded', () => {
@@ -842,3 +963,5 @@
     </script>
 </body>
 </html>
+
+
