@@ -238,6 +238,9 @@
         let latestHeatmapClusters = { long: [], short: [] };
         let isUpdating = false;
         let isDrawingMode = false;
+        let shouldAutoFitOnNextRender = true;
+        let suppressTimeScaleTracking = false;
+        let userHasCustomTimeScale = false;
 
         const bybitKlineIntervalMap = {
             '1m': '1m',
@@ -319,11 +322,53 @@
 
         function initializeChart() {
             chart = LightweightCharts.createChart(chartContainer, {
-                width: chartContainer.clientWidth, height: chartContainer.clientHeight,
-                layout: { backgroundColor: '#131722', textColor: '#d1d4dc' },
-                grid: { vertLines: { visible: false }, horzLines: { visible: false } },
-                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-                timeScale: { borderColor: '#485c7b', timeVisible: true, secondsVisible: false },
+                width: chartContainer.clientWidth,
+                height: chartContainer.clientHeight,
+                layout: {
+                    backgroundColor: '#131722',
+                    textColor: '#d1d4dc',
+                    fontFamily: 'Inter, system-ui, sans-serif'
+                },
+                grid: {
+                    vertLines: { color: 'rgba(255, 255, 255, 0.04)', visible: true },
+                    horzLines: { color: 'rgba(255, 255, 255, 0.04)', visible: true }
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                    vertLine: {
+                        color: 'rgba(150, 154, 170, 0.35)',
+                        width: 1,
+                        labelBackgroundColor: '#1f2937'
+                    },
+                    horzLine: {
+                        color: 'rgba(150, 154, 170, 0.35)',
+                        width: 1,
+                        labelBackgroundColor: '#1f2937'
+                    }
+                },
+                rightPriceScale: {
+                    borderVisible: false,
+                    scaleMargins: { top: 0.05, bottom: 0.25 }
+                },
+                timeScale: {
+                    borderColor: '#485c7b',
+                    timeVisible: true,
+                    secondsVisible: false,
+                    rightOffset: 8,
+                    barSpacing: 9,
+                    fixLeftEdge: false,
+                    lockVisibleTimeRangeOnResize: true
+                },
+                handleScroll: {
+                    vertTouchDrag: true,
+                    mouseWheel: true,
+                    pressedMouseMove: true
+                },
+                handleScale: {
+                    axisPressedMouseMove: true,
+                    mouseWheel: true,
+                    pinch: true
+                }
             });
 
             candlestickSeries = chart.addCandlestickSeries({ upColor: '#26a69a', downColor: '#ef5350', borderDownColor: '#ef5350', borderUpColor: '#26a69a', wickDownColor: '#ef5350', wickUpColor: '#26a69a', priceScaleId: 'right' });
@@ -350,6 +395,11 @@
                 heatmapShortSeries.push(chart.addLineSeries(commonOptions));
             }
 
+            chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+                if (suppressTimeScaleTracking || !range || range.from === null || range.to === null) return;
+                userHasCustomTimeScale = true;
+            });
+
             resizeHeatmapOverlay();
         }
         
@@ -375,6 +425,37 @@
             const numeric = Number(value);
             return Number.isFinite(numeric) ? numeric : fallback;
         }
+
+        const releaseTimeScaleTracking = () => {
+            const enable = () => { suppressTimeScaleTracking = false; };
+            if (typeof requestAnimationFrame === 'function') {
+                requestAnimationFrame(enable);
+            } else {
+                setTimeout(enable, 0);
+            }
+        };
+
+        const runWithTimeScaleLock = (fn) => {
+            suppressTimeScaleTracking = true;
+            try {
+                fn();
+            } finally {
+                releaseTimeScaleTracking();
+            }
+        };
+
+        const resetUserTimeScalePreference = () => {
+            userHasCustomTimeScale = false;
+            shouldAutoFitOnNextRender = true;
+        };
+
+        const maybeAutoFitTimeScale = () => {
+            if (!chart || typeof chart.timeScale !== 'function' || userHasCustomTimeScale || !shouldAutoFitOnNextRender) return;
+            const timeScaleApi = chart.timeScale();
+            if (!timeScaleApi) return;
+            runWithTimeScaleLock(() => timeScaleApi.fitContent());
+            shouldAutoFitOnNextRender = false;
+        };
 
         const formatLiquidityValue = (value) => {
             if (!value || value <= 0) return '$0';
@@ -404,54 +485,70 @@
             heatmapOverlayCanvas.style.height = `${height}px`;
         };
 
-        const drawOverlayClusters = () => {
-            if (!heatmapOverlayCtx || !candlestickSeries || !chart || !latestHeatmapClusters) return;
-            resizeHeatmapOverlay();
-            const dpr = window.devicePixelRatio || 1;
-            heatmapOverlayCtx.save();
-            heatmapOverlayCtx.clearRect(0, 0, heatmapOverlayCanvas.width, heatmapOverlayCanvas.height);
+        const drawOverlayClusters = (() => {
+            let framePending = false;
+            const schedule = typeof requestAnimationFrame === 'function'
+                ? requestAnimationFrame
+                : (cb) => setTimeout(cb, 0);
 
-            const overlayWidth = 140 * dpr;
-            const padding = 20 * dpr;
-            const longX = padding;
-            const shortX = heatmapOverlayCanvas.width - overlayWidth - padding;
+            const render = () => {
+                if (!heatmapOverlayCtx || !candlestickSeries || !chart || !latestHeatmapClusters) return;
+                resizeHeatmapOverlay();
+                const dpr = window.devicePixelRatio || 1;
+                heatmapOverlayCtx.save();
+                heatmapOverlayCtx.clearRect(0, 0, heatmapOverlayCanvas.width, heatmapOverlayCanvas.height);
 
-            const renderCluster = (cluster, side, xStart) => {
-                const topCoord = candlestickSeries.priceToCoordinate(cluster.maxPrice);
-                const bottomCoord = candlestickSeries.priceToCoordinate(cluster.minPrice);
-                if (topCoord === null || bottomCoord === null || topCoord === undefined || bottomCoord === undefined) return;
-                const top = Math.min(topCoord, bottomCoord) * dpr;
-                const bottom = Math.max(topCoord, bottomCoord) * dpr;
-                const height = Math.max(4 * dpr, bottom - top);
+                const overlayWidth = 140 * dpr;
+                const padding = 20 * dpr;
+                const longX = padding;
+                const shortX = heatmapOverlayCanvas.width - overlayWidth - padding;
 
-                const gradient = heatmapOverlayCtx.createLinearGradient(xStart, top, xStart + overlayWidth, bottom);
-                if (side === 'long') {
-                    gradient.addColorStop(0, 'rgba(34, 197, 94, 0.12)');
-                    gradient.addColorStop(0.5, 'rgba(16, 185, 129, 0.45)');
-                    gradient.addColorStop(1, 'rgba(6, 182, 212, 0.55)');
-                } else {
-                    gradient.addColorStop(0, 'rgba(239, 68, 68, 0.12)');
-                    gradient.addColorStop(0.5, 'rgba(248, 113, 113, 0.45)');
-                    gradient.addColorStop(1, 'rgba(249, 115, 22, 0.55)');
-                }
-                heatmapOverlayCtx.fillStyle = gradient;
-                heatmapOverlayCtx.fillRect(xStart, top, overlayWidth, height);
+                const renderCluster = (cluster, side, xStart) => {
+                    const topCoord = candlestickSeries.priceToCoordinate(cluster.maxPrice);
+                    const bottomCoord = candlestickSeries.priceToCoordinate(cluster.minPrice);
+                    if (topCoord === null || bottomCoord === null || topCoord === undefined || bottomCoord === undefined) return;
+                    const top = Math.min(topCoord, bottomCoord) * dpr;
+                    const bottom = Math.max(topCoord, bottomCoord) * dpr;
+                    const height = Math.max(4 * dpr, bottom - top);
 
-                heatmapOverlayCtx.strokeStyle = side === 'long' ? 'rgba(34, 197, 94, 0.65)' : 'rgba(248, 113, 113, 0.65)';
-                heatmapOverlayCtx.lineWidth = 1.2 * dpr;
-                heatmapOverlayCtx.strokeRect(xStart, top, overlayWidth, height);
+                    const gradient = heatmapOverlayCtx.createLinearGradient(xStart, top, xStart + overlayWidth, bottom);
+                    if (side === 'long') {
+                        gradient.addColorStop(0, 'rgba(34, 197, 94, 0.12)');
+                        gradient.addColorStop(0.5, 'rgba(16, 185, 129, 0.45)');
+                        gradient.addColorStop(1, 'rgba(6, 182, 212, 0.55)');
+                    } else {
+                        gradient.addColorStop(0, 'rgba(239, 68, 68, 0.12)');
+                        gradient.addColorStop(0.5, 'rgba(248, 113, 113, 0.45)');
+                        gradient.addColorStop(1, 'rgba(249, 115, 22, 0.55)');
+                    }
+                    heatmapOverlayCtx.fillStyle = gradient;
+                    heatmapOverlayCtx.fillRect(xStart, top, overlayWidth, height);
 
-                const text = formatLiquidityValue(cluster.totalValue);
-                heatmapOverlayCtx.fillStyle = currentTheme === 'dark' ? 'rgba(248, 250, 252, 0.92)' : 'rgba(15, 23, 42, 0.85)';
-                heatmapOverlayCtx.font = `${12 * dpr}px 'Inter', sans-serif`;
-                heatmapOverlayCtx.fillText(text, xStart + 10 * dpr, top + Math.min(height - 4 * dpr, 18 * dpr));
+                    heatmapOverlayCtx.strokeStyle = side === 'long' ? 'rgba(34, 197, 94, 0.65)' : 'rgba(248, 113, 113, 0.65)';
+                    heatmapOverlayCtx.lineWidth = 1.2 * dpr;
+                    heatmapOverlayCtx.strokeRect(xStart, top, overlayWidth, height);
+
+                    const text = formatLiquidityValue(cluster.totalValue);
+                    heatmapOverlayCtx.fillStyle = currentTheme === 'dark' ? 'rgba(248, 250, 252, 0.92)' : 'rgba(15, 23, 42, 0.85)';
+                    heatmapOverlayCtx.font = `${12 * dpr}px 'Inter', sans-serif`;
+                    heatmapOverlayCtx.fillText(text, xStart + 10 * dpr, top + Math.min(height - 4 * dpr, 18 * dpr));
+                };
+
+                latestHeatmapClusters.long.forEach(cluster => renderCluster(cluster, 'long', longX));
+                latestHeatmapClusters.short.forEach(cluster => renderCluster(cluster, 'short', shortX));
+
+                heatmapOverlayCtx.restore();
             };
 
-            latestHeatmapClusters.long.forEach(cluster => renderCluster(cluster, 'long', longX));
-            latestHeatmapClusters.short.forEach(cluster => renderCluster(cluster, 'short', shortX));
-
-            heatmapOverlayCtx.restore();
-        };
+            return () => {
+                if (framePending) return;
+                framePending = true;
+                schedule(() => {
+                    framePending = false;
+                    render();
+                });
+            };
+        })();
 
         function resolveLiquidationSide(entry) {
             const side = entry?.m ?? entry?.side ?? entry?.direction ?? entry?.positionSide;
@@ -610,6 +707,7 @@
         }
         
         function renderAllVisuals() {
+            if (!chart || !candlestickSeries) return;
             const { klines, openInterest, liquidations } = fetchedData;
             
             if (!klines || klines.length === 0) {
@@ -652,15 +750,17 @@
             });
             fetchedData.oiVolRatioData = oiVolRatioData;
 
-            candlestickSeries.setData(klines);
-            volumeSeries.setData(volumeData);
-            openInterestSeries.setData(openInterest);
-            longLiqsSeries.setData(longLiqsData);
-            shortLiqsSeries.setData(shortLiqsData);
-            oiVolRatioSeries.setData(oiVolRatioData);
+            runWithTimeScaleLock(() => {
+                candlestickSeries.setData(klines);
+                volumeSeries.setData(volumeData);
+                openInterestSeries.setData(openInterest);
+                longLiqsSeries.setData(longLiqsData);
+                shortLiqsSeries.setData(shortLiqsData);
+                oiVolRatioSeries.setData(oiVolRatioData);
+                drawAllLiquidationZones(klines, selectedLeverages, oiVolRatioData);
+            });
 
-            drawAllLiquidationZones(klines, selectedLeverages, oiVolRatioData);
-            chart.timeScale().fitContent();
+            maybeAutoFitTimeScale();
         }
 
         function drawAllLiquidationZones(klines, leverages, oiVolRatioData) {
@@ -769,9 +869,9 @@
             const futureTime = lastTime + intervalSeconds * 10;
 
             const drawHeatmap = (pools, seriesArray, maxVolume, type) => {
+                const cappedPools = pools.slice(0, HEATMAP_SERIES_COUNT);
                 
-                
-                pools.slice(0, HEATMAP_SERIES_COUNT).forEach((pool, i) => {
+                cappedPools.forEach((pool, i) => {
                     const intensity = Math.min(1, pool.volume / maxVolume);
                     const isLong = type === 'long';
                     
@@ -799,6 +899,11 @@
                         activePriceLines.push(labelLine);
                     }
                 });
+
+                const usedSeries = Math.min(cappedPools.length, seriesArray.length);
+                for (let i = usedSeries; i < seriesArray.length; i++) {
+                    seriesArray[i].setData([]);
+                }
             };
 
             drawHeatmap(longClusters, heatmapLongSeries, maxLongVol, 'long');
@@ -866,7 +971,7 @@
         
         function handleResize() {
             if (chart) {
-                chart.resize(chartContainer.clientWidth, chartContainer.clientHeight);
+                runWithTimeScaleLock(() => chart.resize(chartContainer.clientWidth, chartContainer.clientHeight));
             }
             resizeHeatmapOverlay();
             drawOverlayClusters();
@@ -878,6 +983,10 @@
             applyTheme(currentTheme);
             updateLiquiditySliderLabel();
             updateChartData();
+            chartContainer.addEventListener('dblclick', () => {
+                resetUserTimeScalePreference();
+                maybeAutoFitTimeScale();
+            });
             setInterval(() => {
                 if (!isUpdating) {
                     updateChartData();
@@ -925,6 +1034,7 @@
             
             symbolSelector.addEventListener('change', (e) => {
                 currentSymbol = e.target.value;
+                resetUserTimeScalePreference();
                 updateChartData();
             });
 
@@ -934,6 +1044,7 @@
                 intervalButtonsContainer.querySelector('.active').classList.remove('active');
                 target.classList.add('active');
                 currentInterval = target.dataset.interval;
+                resetUserTimeScalePreference();
                 updateChartData();
             });
             
