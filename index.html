@@ -637,17 +637,18 @@
                 const renderGlobalHeatmap = () => {
                     if (!liquidityHeatmapBands.length) return;
                     liquidityHeatmapBands.forEach(band => {
+                        const { startCoord, endCoord } = resolveTimeRange(band.startTime, band.endTime, FUTURE_BARS_PROJECTION);
                         const topCoord = toCoord(candlestickSeries.priceToCoordinate(band.high));
                         const bottomCoord = toCoord(candlestickSeries.priceToCoordinate(band.low));
-                        if (topCoord === null || bottomCoord === null) return;
-                        const width = heatmapOverlayCanvas.width;
-                        const top = Math.min(topCoord, bottomCoord) * dpr;
-                        const height = Math.max(3 * dpr, Math.abs(topCoord - bottomCoord) * dpr);
-                        const paddedY = top - height * 0.4;
-                        const paddedHeight = height * 1.8;
-
-                        ctx.fillStyle = heatmapColorForValue(normalizeIntensity(band.totalValue || 0));
-                        ctx.fillRect(-width * 0.02, paddedY, width * 1.04, paddedHeight);
+                        drawHeatmapBlock({
+                            startCoord,
+                            endCoord,
+                            topCoord,
+                            bottomCoord,
+                            intensity: band.totalValue || 0,
+                            side: band.side,
+                            palette: HEATMAP_COLOR_STOPS_ACTIVE
+                        });
                     });
                 };
 
@@ -1037,12 +1038,17 @@
 
             const clusterSpan = Math.max(priceStep * 4, (lastKline.high - lastKline.low) * 0.4 || priceStep);
             const bandHalfHeight = Math.max(priceStep * 1.5, clusterSpan * 0.35);
+            const lastCandleTime = lastKline.time;
+            const intervalSeconds = klines.length > 1 ? klines[1].time - klines[0].time : 3600;
+            const futureTime = lastCandleTime + intervalSeconds * FUTURE_BARS_PROJECTION;
 
             liquidityHeatmapBands = filteredPools.map(pool => ({
                 high: pool.price + bandHalfHeight,
                 low: pool.price - bandHalfHeight,
                 totalValue: pool.volume * pool.price,
-                side: pool.price >= lastPrice ? 'short' : 'long'
+                side: pool.price >= lastPrice ? 'short' : 'long',
+                startTime: lastCandleTime,
+                endTime: futureTime
             }));
 
             const buildClusters = (pools, side) => {
@@ -1084,10 +1090,6 @@
 
             const maxLongVol = longClusters.length ? Math.max(...longClusters.map(c => c.volume)) : 1;
             const maxShortVol = shortClusters.length ? Math.max(...shortClusters.map(c => c.volume)) : 1;
-            
-            const lastTime = klines[klines.length - 1].time;
-            const intervalSeconds = klines.length > 1 ? klines[1].time - klines[0].time : 3600;
-            const futureTime = lastTime + intervalSeconds * 10;
 
             const drawHeatmap = (pools, seriesArray, maxVolume, type) => {
                 const cappedPools = pools.slice(0, HEATMAP_SERIES_COUNT);
@@ -1103,7 +1105,7 @@
 
                     const series = seriesArray[i];
                     series.applyOptions({ color, lineWidth });
-                    series.setData([{ time: lastTime, value: pool.price }, { time: futureTime, value: pool.price }]);
+                    series.setData([{ time: lastCandleTime, value: pool.price }, { time: futureTime, value: pool.price }]);
 
                     if (i < VISIBLE_LABELS_COUNT) {
                         const liquidityInUSD = pool.totalValue;
@@ -1129,12 +1131,12 @@
 
             const longClustersWithTime = longClusters.map(cluster => ({
                 ...cluster,
-                startTime: lastTime,
+                startTime: lastCandleTime,
                 endTime: futureTime
             }));
             const shortClustersWithTime = shortClusters.map(cluster => ({
                 ...cluster,
-                startTime: lastTime,
+                startTime: lastCandleTime,
                 endTime: futureTime
             }));
 
