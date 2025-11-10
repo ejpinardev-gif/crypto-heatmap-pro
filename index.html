@@ -530,7 +530,7 @@
             const normalized = Math.min(1, Math.max(0, value));
             const eased = Math.pow(normalized, 0.35); // boost contrast on small values
             const [r, g, b] = interpolateColor(HEATMAP_COLOR_STOPS, eased);
-            const alpha = 0.25 + eased * 0.7;
+            const alpha = 0.15 + eased * 0.35;
             return `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)})`;
         };
 
@@ -556,6 +556,14 @@
                 }
 
                 const toCoord = (value) => (typeof value === 'number' ? value : null);
+                const priceScale = chart.priceScale('right');
+                const scaleOptions = (typeof priceScale?.options === 'function'
+                    ? priceScale.options()
+                    : priceScale?.options) || {};
+                const scaleMargins = scaleOptions.scaleMargins || { top: 0, bottom: 0 };
+                const paneTop = heatmapOverlayCanvas.height * (scaleMargins.top ?? 0);
+                const paneBottom = heatmapOverlayCanvas.height * (1 - (scaleMargins.bottom ?? 0));
+                const paneHeight = Math.max(10, paneBottom - paneTop);
 
                 const estimateBarSpacingPx = () => {
                     if (!timeScale) return 10;
@@ -610,6 +618,11 @@
                     ctx.lineWidth = 0.8 * dpr;
                     ctx.strokeRect(x, top, width, height);
                 };
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(0, paneTop, heatmapOverlayCanvas.width, paneHeight);
+                ctx.clip();
 
                 ctx.globalCompositeOperation = 'lighter';
                 ctx.filter = 'blur(3px)';
@@ -679,6 +692,7 @@
 
                 ctx.filter = 'none';
                 ctx.globalCompositeOperation = 'source-over';
+                ctx.restore();
 
                 const renderSidePanels = () => {
                     if ((!latestHeatmapClusters.long.length && !latestHeatmapClusters.short.length)) return;
