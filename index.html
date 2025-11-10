@@ -216,9 +216,16 @@
 
         const heatmapOverlayCanvas = document.createElement('canvas');
         heatmapOverlayCanvas.id = 'liquidity-heatmap-overlay';
-        heatmapOverlayCanvas.className = 'absolute inset-0 pointer-events-none';
+        heatmapOverlayCanvas.style.position = 'absolute';
+        heatmapOverlayCanvas.style.top = '0';
+        heatmapOverlayCanvas.style.left = '0';
+        heatmapOverlayCanvas.style.right = '0';
+        heatmapOverlayCanvas.style.bottom = '0';
+        heatmapOverlayCanvas.style.width = '100%';
+        heatmapOverlayCanvas.style.height = '100%';
+        heatmapOverlayCanvas.style.pointerEvents = 'none';
         heatmapOverlayCanvas.style.zIndex = '6';
-        chartContainer.prepend(heatmapOverlayCanvas);
+        chartContainer.appendChild(heatmapOverlayCanvas);
         const heatmapOverlayCtx = heatmapOverlayCanvas.getContext('2d');
 
         // --- Chart State ---
@@ -230,6 +237,7 @@
         let fetchedData = { klines: [], openInterest: [], liquidations: [], longLiqs: [], shortLiqs: [] };
         const HEATMAP_SERIES_COUNT = 150;
         const VISIBLE_LABELS_COUNT = 8;
+        const FUTURE_BARS_PROJECTION = 10;
 
         let currentSymbol = 'BTCUSDT';
         let currentInterval = '4h';
@@ -322,7 +330,9 @@
         }
 
         function initializeChart() {
-            chart = LightweightCharts.createChart(chartContainer, {
+        chartContainer.style.position = chartContainer.style.position || 'relative';
+
+        chart = LightweightCharts.createChart(chartContainer, {
                 width: chartContainer.clientWidth,
                 height: chartContainer.clientHeight,
                 layout: {
@@ -508,11 +518,30 @@
 
                 const toCoord = (value) => (typeof value === 'number' ? value : null);
 
+                const estimateBarSpacingPx = () => {
+                    if (!timeScale) return 10;
+                    const logicalRange = timeScale.getVisibleLogicalRange ? timeScale.getVisibleLogicalRange() : null;
+                    if (logicalRange && Number.isFinite(logicalRange.from) && Number.isFinite(logicalRange.to)) {
+                        const bars = Math.max(1, logicalRange.to - logicalRange.from);
+                        return (chartContainer.clientWidth / bars);
+                    }
+                    const opts = typeof timeScale.options === 'function' ? timeScale.options() : null;
+                    return opts?.barSpacing || 10;
+                };
+
+                const resolveTimeRange = (startTime, endTime, fallbackBars = 0) => {
+                    const startCoord = toCoord(timeScale.timeToCoordinate(startTime));
+                    let endCoord = toCoord(timeScale.timeToCoordinate(endTime));
+                    if ((endCoord === null || endCoord === undefined) && startCoord !== null && fallbackBars > 0) {
+                        endCoord = startCoord + estimateBarSpacingPx() * fallbackBars;
+                    }
+                    return { startCoord, endCoord };
+                };
+
                 const renderHistoricalBands = () => {
                     if (!historicalLiquidityZones.length) return;
                     historicalLiquidityZones.forEach((zone) => {
-                        const xStart = toCoord(timeScale.timeToCoordinate(zone.startTime));
-                        const xEnd = toCoord(timeScale.timeToCoordinate(zone.endTime));
+                        const { startCoord: xStart, endCoord: xEnd } = resolveTimeRange(zone.startTime, zone.endTime, 1);
                         if (xStart === null || xEnd === null) return;
                         const topCoord = toCoord(candlestickSeries.priceToCoordinate(zone.high));
                         const bottomCoord = toCoord(candlestickSeries.priceToCoordinate(zone.low));
@@ -540,8 +569,11 @@
 
                 const renderFutureBands = () => {
                     const renderZone = (cluster, side) => {
-                        const xStart = toCoord(timeScale.timeToCoordinate(cluster.startTime));
-                        const xEnd = toCoord(timeScale.timeToCoordinate(cluster.endTime));
+                        const { startCoord: xStart, endCoord: xEnd } = resolveTimeRange(
+                            cluster.startTime,
+                            cluster.endTime,
+                            FUTURE_BARS_PROJECTION
+                        );
                         if (xStart === null || xEnd === null) return;
                         const topCoord = toCoord(candlestickSeries.priceToCoordinate(cluster.maxPrice));
                         const bottomCoord = toCoord(candlestickSeries.priceToCoordinate(cluster.minPrice));
