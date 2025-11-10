@@ -412,6 +412,7 @@
             });
 
             resizeHeatmapOverlay();
+            ensureOverlayOnTop();
         }
         
         function normalizeTimestamp(raw) {
@@ -494,6 +495,12 @@
             heatmapOverlayCanvas.height = Math.max(1, Math.floor(height * dpr));
             heatmapOverlayCanvas.style.width = `${width}px`;
             heatmapOverlayCanvas.style.height = `${height}px`;
+        };
+
+        const ensureOverlayOnTop = () => {
+            if (!chartContainer || !heatmapOverlayCanvas) return;
+            heatmapOverlayCanvas.style.zIndex = '20';
+            chartContainer.appendChild(heatmapOverlayCanvas);
         };
 
         const drawOverlayClusters = (() => {
