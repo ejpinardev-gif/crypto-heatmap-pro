@@ -234,6 +234,7 @@
         let heatmapLongSeries = [], heatmapShortSeries = [];
         let historicalPriceLines = [], activePriceLines = [], userDrawnLines = [];
         let historicalLiquidityZones = [];
+        let liquidityHeatmapBands = [];
         let fetchedData = { klines: [], openInterest: [], liquidations: [], longLiqs: [], shortLiqs: [] };
         const HEATMAP_SERIES_COUNT = 150;
         const VISIBLE_LABELS_COUNT = 8;
@@ -580,6 +581,7 @@
                 historicalLiquidityZones.forEach(zone => allIntensities.push(zone.totalValue || 0));
                 latestHeatmapClusters.long.forEach(cluster => allIntensities.push(cluster.totalValue || 0));
                 latestHeatmapClusters.short.forEach(cluster => allIntensities.push(cluster.totalValue || 0));
+                liquidityHeatmapBands.forEach(band => allIntensities.push(band.totalValue || 0));
                 const maxHeatmapValue = Math.max(1, ...allIntensities);
                 const normalizeIntensity = (value) => Math.min(1, Math.max(0, value / maxHeatmapValue));
 
@@ -611,6 +613,23 @@
 
                 ctx.globalCompositeOperation = 'lighter';
                 ctx.filter = 'blur(3px)';
+
+                const renderGlobalHeatmap = () => {
+                    if (!liquidityHeatmapBands.length) return;
+                    liquidityHeatmapBands.forEach(band => {
+                        const topCoord = toCoord(candlestickSeries.priceToCoordinate(band.high));
+                        const bottomCoord = toCoord(candlestickSeries.priceToCoordinate(band.low));
+                        if (topCoord === null || bottomCoord === null) return;
+                        const width = heatmapOverlayCanvas.width;
+                        const top = Math.min(topCoord, bottomCoord) * dpr;
+                        const height = Math.max(3 * dpr, Math.abs(topCoord - bottomCoord) * dpr);
+                        const paddedY = top - height * 0.4;
+                        const paddedHeight = height * 1.8;
+
+                        ctx.fillStyle = heatmapColorForValue(normalizeIntensity(band.totalValue || 0));
+                        ctx.fillRect(-width * 0.02, paddedY, width * 1.04, paddedHeight);
+                    });
+                };
 
                 const renderHistoricalHeatmap = () => {
                     if (!historicalLiquidityZones.length) return;
@@ -654,6 +673,7 @@
                     renderCollection(latestHeatmapClusters.short, 'short');
                 };
 
+                renderGlobalHeatmap();
                 renderHistoricalHeatmap();
                 renderFutureHeatmap();
 
@@ -944,6 +964,7 @@
             historicalPriceLines = [];
             activePriceLines = [];
             historicalLiquidityZones = [];
+            liquidityHeatmapBands = [];
             heatmapLongSeries.forEach(series => series.setData([]));
             heatmapShortSeries.forEach(series => series.setData([]));
             latestHeatmapClusters = { long: [], short: [] };
@@ -992,6 +1013,14 @@
             const filteredPools = poolsArray.filter(p => (p.volume * p.price) >= thresholdValue);
 
             const clusterSpan = Math.max(priceStep * 4, (lastKline.high - lastKline.low) * 0.4 || priceStep);
+            const bandHalfHeight = Math.max(priceStep * 1.5, clusterSpan * 0.35);
+
+            liquidityHeatmapBands = filteredPools.map(pool => ({
+                high: pool.price + bandHalfHeight,
+                low: pool.price - bandHalfHeight,
+                totalValue: pool.volume * pool.price,
+                side: pool.price >= lastPrice ? 'short' : 'long'
+            }));
 
             const buildClusters = (pools, side) => {
                 if (!pools.length) return [];
