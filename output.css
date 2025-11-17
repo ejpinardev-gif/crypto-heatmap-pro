@@ -97,7 +97,7 @@ body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI"
 .h-0\.5{height:0.125rem}
 
 /* Specific app components fallback styles */
-.liquidity-panel{position:fixed;right:1rem;top:4rem;width:240px;background:var(--card-bg);backdrop-filter:blur(6px);border-radius:8px;padding:0.75rem;border:1px solid rgba(255,255,255,0.03);z-index:30;color:var(--text-color)}
+.liquidity-panel{position:fixed;left:1rem;top:4rem;width:240px;background:var(--card-bg);backdrop-filter:blur(6px);border-radius:8px;padding:0.75rem;border:1px solid rgba(255,255,255,0.03);z-index:30;color:var(--text-color)}
 .liquidity-zone-item{padding:0.5rem;border-radius:6px;margin-bottom:0.5rem;color:var(--text-color);display:flex;flex-direction:column}
 .zone-price{font-weight:600}
 .zone-value{font-size:0.85rem;color:var(--muted-text)}
