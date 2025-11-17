@@ -1,0 +1,14 @@
+(node:5956) ExperimentalWarning: CommonJS module C:\Program Files\nodejs\node_modules\npm\node_modules\debug\src\node.js is loading ES Module C:\Program Files\nodejs\node_modules\npm\node_modules\supports-color\index.js using require().
+Support for loading ES Module in require() is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+Vercel CLI 46.0.2
+Retrieving projectÔÇª
+Deploying ejpinardev-gifs-projects/crypto-heatmap-pro
+Uploading [--------------------] (0.0B/511B)
+Uploading [====================] (511.0B/511B)
+Inspect: https://vercel.com/ejpinardev-gifs-projects/crypto-heatmap-pro/9V6AHtpEfYZJZZ3ikq5S3ip4hTV8 [3s]
+Production: https://crypto-heatmap-18pgg1z38-ejpinardev-gifs-projects.vercel.app [3s]
+Queued
+Building
+Completing
+https://crypto-heatmap-18pgg1z38-ejpinardev-gifs-projects.vercel.app
