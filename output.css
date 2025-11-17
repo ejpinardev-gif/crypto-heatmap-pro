@@ -1,0 +1,113 @@
+/* Minimal compiled CSS substitute for Tailwind utilities used in index.html
+   This file is intentionally small: it defines root variables and common
+   utility classes used by the app so it works without running the Tailwind CLI.
+*/
+
+:root{
+  --background-surface: #0b1220;
+  --background-gradient: radial-gradient(circle at 20% -10%, rgba(59,130,246,0.35), transparent 55%), radial-gradient(circle at 80% -10%, rgba(236,72,153,0.25), transparent 45%), #0b1220;
+  --card-bg: rgba(20,26,38,0.75);
+  --text-color: #d8dde6;
+  --muted-text: #9ba1b3;
+  --border-color: rgba(148,163,184,0.08);
+  --accent: #3b82f6;
+}
+
+[data-theme='light']{
+  --background-surface: #f5f7fb;
+  --background-gradient: radial-gradient(circle at 20% -10%, rgba(59,130,246,0.2), transparent 55%), radial-gradient(circle at 70% -10%, rgba(236,72,153,0.15), transparent 50%), #f5f7fb;
+  --card-bg: rgba(255,255,255,0.8);
+  --text-color: #1f2937;
+  --muted-text: #6b7280;
+  --border-color: rgba(148,163,184,0.18);
+  --accent: #2563eb;
+}
+
+/* Basic reset */
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;color:var(--text-color);background:var(--background-surface);background-image:var(--background-gradient);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+
+/* Layout utilities */
+.flex{display:flex}
+.flex-col{flex-direction:column}
+.flex-wrap{flex-wrap:wrap}
+.flex-grow{flex:1}
+.items-center{align-items:center}
+.justify-between{justify-content:space-between}
+.gap-4{gap:1rem}
+.container{max-width:1100px;padding-left:1rem;padding-right:1rem}
+.mx-auto{margin-left:auto;margin-right:auto}
+.w-full{width:100%}
+.h-full{height:100%}
+.h-screen{height:100vh}
+.absolute{position:absolute}
+.relative{position:relative}
+.inset-0{top:0;right:0;bottom:0;left:0}
+
+/* Spacing */
+.p-4{padding:1rem}
+.p-1{padding:0.25rem}
+.px-3{padding-left:0.75rem;padding-right:0.75rem}
+.py-2{padding-top:0.5rem;padding-bottom:0.5rem}
+.pt-2{padding-top:0.5rem}
+.mt-1{margin-top:0.25rem}
+.mr-1{margin-right:0.25rem}
+
+/* Borders / radius / shadow */
+.border{border:1px solid var(--border-color)}
+.border-b{border-bottom:1px solid var(--border-color)}
+.rounded-lg{border-radius:0.5rem}
+.rounded-md{border-radius:0.375rem}
+.shadow-md{box-shadow:0 4px 8px rgba(2,6,23,0.6)}
+.border-t-2{border-top-width:2px}
+.border-dashed{border-style:dashed}
+
+/* Typography */
+.text-2xl{font-size:1.5rem;line-height:1.2}
+.text-xs{font-size:0.75rem}
+.font-bold{font-weight:700}
+.font-medium{font-weight:500}
+.text-sm{font-size:0.875rem}
+.font-mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Helvetica Neue", monospace}
+.whitespace-nowrap{white-space:nowrap}
+
+/* Colors approximations used in layout */
+.bg-red-500{background-color:#ef4444}
+.bg-green-500{background-color:#22c55e}
+.text-yellow-400{color:#f59e0b}
+.border-gray-500{border-color:rgba(148,163,184,0.5)}
+
+/* Buttons and controls */
+.control-button{background:transparent;border:1px solid rgba(255,255,255,0.04);cursor:pointer}
+.interval-btn{cursor:pointer}
+.active{background:rgba(255,255,255,0.03)}
+.hidden{display:none}
+
+/* Loader */
+.animate-spin{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Small sizing helpers used for icons/indicators */
+.h-5{height:1.25rem}
+.w-5{width:1.25rem}
+.h-4{height:1rem}
+.w-4{width:1rem}
+.w-3{width:0.75rem}
+.h-0\.5{height:0.125rem}
+
+/* Specific app components fallback styles */
+.liquidity-panel{position:fixed;right:1rem;top:4rem;width:240px;background:var(--card-bg);backdrop-filter:blur(6px);border-radius:8px;padding:0.75rem;border:1px solid rgba(255,255,255,0.03);z-index:30;color:var(--text-color)}
+.liquidity-zone-item{padding:0.5rem;border-radius:6px;margin-bottom:0.5rem;color:var(--text-color);display:flex;flex-direction:column}
+.zone-price{font-weight:600}
+.zone-value{font-size:0.85rem;color:var(--muted-text)}
+.zone-strength{height:6px;border-radius:999px;margin-top:6px}
+
+/* Inputs */
+input[type=range]{-webkit-appearance:none;height:6px;background:rgba(255,255,255,0.06);border-radius:999px}
+
+/* Utility for pointer-events none overlays */
+.pointer-events-none{pointer-events:none}
+
+/* Minimal responsive tweaks */
+@media (max-width:640px){.container{padding-left:0.75rem;padding-right:0.75rem}.liquidity-panel{position:static;width:auto;margin:0.5rem}}

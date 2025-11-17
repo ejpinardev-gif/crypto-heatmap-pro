@@ -5,6 +5,8 @@
   "main": "api/coinalyze.js",
   "scripts": {
     "start": "node api/coinalyze.js",
+    "build": "npx tailwindcss -i ./styles.css -o ./output.css --minify",
+    "vercel-build": "npm run build",
     "capture:snapshot": "node scripts/captureSnapshot.js",
     "capture:schedule": "node scripts/snapshotScheduler.js",
     "capture:all": "node scripts/captureAllSymbols.js"
@@ -13,5 +15,10 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.22",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.17"
   }
 }
