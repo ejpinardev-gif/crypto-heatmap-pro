@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node api/coinalyze.js",
     "build": "npx tailwindcss -i ./styles.css -o ./output.css --minify",
-    "vercel-build": "npm run build",
+    "vercel-build": "echo 'Skipping build - output.css already committed'",
     "capture:snapshot": "node scripts/captureSnapshot.js",
     "capture:schedule": "node scripts/snapshotScheduler.js",
     "capture:all": "node scripts/captureAllSymbols.js"
