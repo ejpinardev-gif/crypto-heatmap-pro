@@ -842,8 +842,8 @@
                         });
                     };
 
-                    renderCollection(latestHeatmapClusters.long, 'long');
-                    renderCollection(latestHeatmapClusters.short, 'short');
+                    renderCollection(latestHeatmapClusters.long, 'short');
+                    renderCollection(latestHeatmapClusters.short, 'long');
                 };
 
                 renderHistoricalHeatmap();
@@ -1252,8 +1252,8 @@
                     .slice(0, 50);
             };
 
-            const longClusters = buildClusters(filteredPools.filter(p => p.price > lastPrice), 'short');
-            const shortClusters = buildClusters(filteredPools.filter(p => p.price < lastPrice), 'long');
+            const longClusters = buildClusters(filteredPools.filter(p => p.price < lastPrice), 'long');
+            const shortClusters = buildClusters(filteredPools.filter(p => p.price > lastPrice), 'short');
 
             const maxLongVol = longClusters.length ? Math.max(...longClusters.map(c => c.volume)) : 1;
             const maxShortVol = shortClusters.length ? Math.max(...shortClusters.map(c => c.volume)) : 1;
@@ -1330,9 +1330,9 @@
             if (significantLiqs.length === 0) return;
 
             const avgLiqValue = significantLiqs.reduce((sum, l) => sum + l.totalLiqValue, 0) / significantLiqs.length;
-            const liqThreshold = avgLiqValue * 2.0;
+            const liqThreshold = avgLiqValue * 0.5;
 
-            const MAX_HISTORICAL_ZONES = 7;
+            const MAX_HISTORICAL_ZONES = 20;
             let zonesDrawn = 0;
 
             for (const liq of significantLiqs) {
