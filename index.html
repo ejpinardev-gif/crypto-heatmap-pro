@@ -1252,8 +1252,8 @@
                     .slice(0, 50);
             };
 
-            const longClusters = buildClusters(filteredPools.filter(p => p.price < lastPrice), 'long');
-            const shortClusters = buildClusters(filteredPools.filter(p => p.price > lastPrice), 'short');
+            const longClusters = buildClusters(filteredPools.filter(p => p.price > lastPrice), 'short');
+            const shortClusters = buildClusters(filteredPools.filter(p => p.price < lastPrice), 'long');
 
             const maxLongVol = longClusters.length ? Math.max(...longClusters.map(c => c.volume)) : 1;
             const maxShortVol = shortClusters.length ? Math.max(...shortClusters.map(c => c.volume)) : 1;
