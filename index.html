@@ -432,6 +432,7 @@
         let liquidityThresholdPct = 0;
         let maxLiquidityObserved = 0;
         let latestHeatmapClusters = { long: [], short: [] };
+        let historicalHeatmapClusters = { long: [], short: [] };  // Clusters from past candles
         let isUpdating = false;
         let isDrawingMode = false;
         let shouldAutoFitOnNextRender = true;
@@ -891,7 +892,7 @@
                 };
 
                 const renderActiveHeatmap = () => {
-                    const renderCollection = (collection, side) => {
+                    const renderCollection = (collection, side, isHistorical = false) => {
                         collection.forEach(cluster => {
                             const { startCoord, endCoord } = resolveTimeRange(
                                 cluster.startTime,
@@ -910,13 +911,18 @@
                                 intensity: normalizeIntensity(cluster.totalValue || 0),
                                 side,
                                 palette,
-                                isHistorical: false
+                                isHistorical
                             });
                         });
                     };
 
-                    renderCollection(latestHeatmapClusters.long, 'long');
-                    renderCollection(latestHeatmapClusters.short, 'short');
+                    // Render active clusters (from last candle)
+                    renderCollection(latestHeatmapClusters.long, 'long', false);
+                    renderCollection(latestHeatmapClusters.short, 'short', false);
+
+                    // Render historical clusters (from past candles)
+                    renderCollection(historicalHeatmapClusters.long, 'long', true);
+                    renderCollection(historicalHeatmapClusters.short, 'short', true);
                 };
 
                 renderHistoricalHeatmap();
@@ -1240,6 +1246,7 @@
             heatmapLongSeries.forEach(series => series.setData([]));
             heatmapShortSeries.forEach(series => series.setData([]));
             latestHeatmapClusters = { long: [], short: [] };
+            historicalHeatmapClusters = { long: [], short: [] };
             updateLiquidityPanel();
             drawOverlayClusters();
         }
@@ -1387,6 +1394,146 @@
                 long: longClustersWithTime.slice(0, 25),
                 short: shortClustersWithTime.slice(0, 25)
             };
+
+            // Calculate historical clusters from past candles
+            historicalHeatmapClusters = calculateHistoricalClusters(klines, leverages);
+        }
+
+        function calculateHistoricalClusters(klines, leverages) {
+            const allHistoricalClusters = { long: [], short: [] };
+            const currentPrice = klines[klines.length - 1].close;
+            const currentTime = Math.floor(Date.now() / 1000);
+
+            // Process last 100 candles (excluding the last one which is in latestHeatmapClusters)
+            const lookbackCandles = Math.min(100, klines.length - 1);
+            const startIndex = Math.max(0, klines.length - lookbackCandles - 1);
+
+            for (let candleIndex = startIndex; candleIndex < klines.length - 1; candleIndex++) {
+                const kline = klines[candleIndex];
+                const liquidationPools = new Map();
+                const priceStep = kline.close * 0.0002;
+
+                const blurKernel = [
+                    { offset: -2, weight: 0.1 }, { offset: -1, weight: 0.2 },
+                    { offset: 0, weight: 0.4 },
+                    { offset: 1, weight: 0.2 }, { offset: 2, weight: 0.1 },
+                ];
+
+                // Calculate liquidation levels for this candle
+                leverages.forEach(leverage => {
+                    const entryPrice = (kline.high + kline.low) / 2;
+                    const positionVolume = kline.volume / (2 * leverages.length);
+
+                    const processLiquidation = (price, volume) => {
+                        const basePoolKey = Math.round(price / priceStep);
+                        blurKernel.forEach(k => {
+                            const finalKey = (basePoolKey + k.offset) * priceStep;
+                            const volToAdd = volume * k.weight;
+                            if (!liquidationPools.has(finalKey)) liquidationPools.set(finalKey, { volume: 0 });
+                            liquidationPools.get(finalKey).volume += volToAdd;
+                        });
+                    };
+
+                    processLiquidation(entryPrice * (1 - 1 / leverage), positionVolume);
+                    processLiquidation(entryPrice * (1 + 1 / leverage), positionVolume);
+                });
+
+                // Build clusters for this candle
+                let poolsArray = Array.from(liquidationPools.entries()).map(([price, data]) => ({ price, ...data }));
+                const clusterSpan = Math.max(priceStep * 4, (kline.high - kline.low) * 0.4 || priceStep);
+
+                const buildClusters = (pools, side) => {
+                    if (!pools.length) return [];
+                    const map = new Map();
+                    pools.forEach(pool => {
+                        const clusterKey = Math.round(pool.price / clusterSpan);
+                        let cluster = map.get(clusterKey);
+                        if (!cluster) {
+                            cluster = {
+                                minPrice: pool.price,
+                                maxPrice: pool.price,
+                                volume: 0,
+                                totalValue: 0
+                            };
+                            map.set(clusterKey, cluster);
+                        }
+                        cluster.minPrice = Math.min(cluster.minPrice, pool.price);
+                        cluster.maxPrice = Math.max(cluster.maxPrice, pool.price);
+                        cluster.volume += pool.volume;
+                        cluster.totalValue += pool.volume * pool.price;
+                    });
+                    return Array.from(map.values())
+                        .map(cluster => {
+                            const centerPrice = (cluster.minPrice + cluster.maxPrice) / 2;
+                            return {
+                                ...cluster,
+                                price: centerPrice,
+                                centerPrice,
+                                side,
+                                candleIndex
+                            };
+                        });
+                };
+
+                const longPools = poolsArray.filter(p => p.price < kline.close);
+                const shortPools = poolsArray.filter(p => p.price > kline.close);
+
+                const longClusters = buildClusters(longPools, 'long');
+                const shortClusters = buildClusters(shortPools, 'short');
+
+                // Filter out consumed clusters
+                const isClusterConsumed = (cluster) => {
+                    const clusterHigh = cluster.maxPrice;
+                    const clusterLow = cluster.minPrice;
+
+                    // Check all candles AFTER this cluster was created
+                    for (let i = candleIndex + 1; i < klines.length; i++) {
+                        const futureKline = klines[i];
+                        // If price crossed through the cluster range
+                        if (futureKline.low <= clusterHigh && futureKline.high >= clusterLow) {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+
+                // Add unconsumed clusters with time information
+                const intervalSeconds = klines.length > 1 ? klines[1].time - klines[0].time : 3600;
+                const extendedEndTime = currentTime + (30 * 24 * 60 * 60);
+
+                longClusters.forEach(cluster => {
+                    if (!isClusterConsumed(cluster)) {
+                        allHistoricalClusters.long.push({
+                            ...cluster,
+                            startTime: kline.time,
+                            endTime: extendedEndTime
+                        });
+                    }
+                });
+
+                shortClusters.forEach(cluster => {
+                    if (!isClusterConsumed(cluster)) {
+                        allHistoricalClusters.short.push({
+                            ...cluster,
+                            startTime: kline.time,
+                            endTime: extendedEndTime
+                        });
+                    }
+                });
+            }
+
+            // Limit to top 50 clusters per side
+            const topLongs = allHistoricalClusters.long
+                .sort((a, b) => b.totalValue - a.totalValue)
+                .slice(0, 50);
+
+            const topShorts = allHistoricalClusters.short
+                .sort((a, b) => b.totalValue - a.totalValue)
+                .slice(0, 50);
+
+            console.log(`✅ Calculated ${topLongs.length} historical long clusters + ${topShorts.length} historical short clusters`);
+
+            return { long: topLongs, short: topShorts };
         }
 
         function findAndDrawHistoricalZones(klines, longLiqs, shortLiqs) {
