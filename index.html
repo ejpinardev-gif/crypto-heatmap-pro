@@ -857,20 +857,20 @@
                     const top = Math.min(topCoord, bottomCoord) * dpr;
                     const height = Math.max(2 * dpr, Math.abs(topCoord - bottomCoord) * dpr);
 
-                    // Enhanced gradient with MUCH MORE visible contrast
-                    const gradient = ctx.createLinearGradient(0, top, 0, top + height);
+                    // HORIZONTAL gradient (left to right) for visibility on thin clusters
+                    const gradient = ctx.createLinearGradient(x, 0, x + width, 0);
                     const [r, g, b] = interpolateColor(palette, Math.min(1, intensity));
 
-                    // More pronounced gradient: top opaque → bottom very transparent
-                    const alphaTop = isHistorical
-                        ? 0.15 + intensity * 0.40
-                        : 0.30 + intensity * 0.60;
-                    const alphaMid = alphaTop * 0.55;      // 55% of top
-                    const alphaBottom = alphaTop * 0.20;   // 20% of top (much lighter)
+                    // Pronounced horizontal gradient: left opaque → right transparent
+                    const alphaLeft = isHistorical
+                        ? 0.20 + intensity * 0.45
+                        : 0.35 + intensity * 0.60;
+                    const alphaMid = alphaLeft * 0.60;
+                    const alphaRight = alphaLeft * 0.15;  // Very transparent on right
 
-                    gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${alphaTop})`);
-                    gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${alphaMid})`);
-                    gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${alphaBottom})`);
+                    gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${alphaLeft})`);
+                    gradient.addColorStop(0.6, `rgba(${r}, ${g}, ${b}, ${alphaMid})`);
+                    gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${alphaRight})`);
 
                     ctx.fillStyle = gradient;
                     ctx.fillRect(x, top, width, height);
