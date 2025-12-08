@@ -1,5 +1,6 @@
 ﻿<!DOCTYPE html>
 <html lang="en" data-theme="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -41,25 +42,26 @@
             backdrop-filter: blur(18px);
         }
 
-        #controls > * {
+        #controls>* {
             background-color: var(--card-bg);
             border-color: var(--border-color);
             color: var(--text-color);
             backdrop-filter: blur(12px);
         }
 
-        #legend, #liquidity-slider-container label {
+        #legend,
+        #liquidity-slider-container label {
             color: var(--muted-text);
         }
 
         #slider-value {
-             background-color: rgba(59, 130, 246, 0.15);
-             color: var(--text-color);
+            background-color: rgba(59, 130, 246, 0.15);
+            color: var(--text-color);
         }
 
         [data-theme='light'] #slider-value {
-             background-color: rgba(59, 130, 246, 0.12);
-             color: #1f2937;
+            background-color: rgba(59, 130, 246, 0.12);
+            color: #1f2937;
         }
 
         #liquidity-slider {
@@ -76,10 +78,22 @@
         }
 
         /* Custom scrollbar for a better look */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.45); }
-        ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.45); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.7); }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(30, 41, 59, 0.45);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.45);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.7);
+        }
 
         /* Enhanced Heatmap Styles */
         .heatmap-legend {
@@ -217,7 +231,8 @@
             font-size: 12px;
             font-weight: 600;
             letter-spacing: 0.02em;
-            pointer-events: none; /* Allows clicking through the label */
+            pointer-events: none;
+            /* Allows clicking through the label */
             z-index: 10;
             text-transform: uppercase;
         }
@@ -227,6 +242,7 @@
         }
     </style>
 </head>
+
 <body class="flex flex-col h-screen antialiased">
 
     <!-- Header with controls -->
@@ -235,17 +251,25 @@
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div class="flex-grow">
                     <h1 class="text-2xl font-bold">Liquidation Zone Heatmap</h1>
-                     <div id="legend" class="text-xs flex items-center gap-4 mt-1 flex-wrap">
+                    <div id="legend" class="text-xs flex items-center gap-4 mt-1 flex-wrap">
                         <span>Leyenda:</span>
-                        <span class="flex items-center"><div class="w-3 h-0.5 bg-red-500 mr-1"></div> Zonas Activas (Shorts)</span>
-                        <span class="flex items-center"><div class="w-3 h-0.5 bg-green-500 mr-1"></div> Zonas Activas (Longs)</span>
-                        <span class="flex items-center"><div class="w-3 h-0 border-t-2 border-dashed border-gray-500 mr-1"></div> Liquidaciones Pasadas</span>
-                         <span class="flex items-center text-yellow-400">⭐ Más Probable</span>
+                        <span class="flex items-center">
+                            <div class="w-3 h-0.5 bg-red-500 mr-1"></div> Zonas Activas (Shorts)
+                        </span>
+                        <span class="flex items-center">
+                            <div class="w-3 h-0.5 bg-green-500 mr-1"></div> Zonas Activas (Longs)
+                        </span>
+                        <span class="flex items-center">
+                            <div class="w-3 h-0 border-t-2 border-dashed border-gray-500 mr-1"></div> Liquidaciones
+                            Pasadas
+                        </span>
+                        <span class="flex items-center text-yellow-400">⭐ Más Probable</span>
                     </div>
                 </div>
                 <div id="controls" class="flex flex-wrap items-center gap-4">
                     <!-- Symbol Selection -->
-                    <select id="symbol" class="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <select id="symbol"
+                        class="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="BTCUSDT" selected>BTC/USDT</option>
                         <option value="ETHUSDT">ETH/USDT</option>
                         <option value="BNBUSDT">BNB/USDT</option>
@@ -257,39 +281,66 @@
                     </select>
                     <!-- Interval Selection -->
                     <div id="interval-buttons" class="flex items-center border rounded-lg p-1">
-                        <button class="interval-btn control-button px-3 py-1 rounded-md text-sm font-medium" data-interval="1m">1m</button>
-                        <button class="interval-btn control-button px-3 py-1 rounded-md text-sm font-medium" data-interval="5m">5m</button>
-                        <button class="interval-btn control-button px-3 py-1 rounded-md text-sm font-medium" data-interval="15m">15m</button>
-                        <button class="interval-btn control-button px-3 py-1 rounded-md text-sm font-medium" data-interval="1h">1H</button>
-                        <button class="interval-btn control-button px-3 py-1 rounded-md text-sm font-medium active" data-interval="4h">4H</button>
-                        <button class="interval-btn control-button px-3 py-1 rounded-md text-sm font-medium" data-interval="1d">1D</button>
+                        <button class="interval-btn control-button px-3 py-1 rounded-md text-sm font-medium"
+                            data-interval="1m">1m</button>
+                        <button class="interval-btn control-button px-3 py-1 rounded-md text-sm font-medium"
+                            data-interval="5m">5m</button>
+                        <button class="interval-btn control-button px-3 py-1 rounded-md text-sm font-medium"
+                            data-interval="15m">15m</button>
+                        <button class="interval-btn control-button px-3 py-1 rounded-md text-sm font-medium"
+                            data-interval="1h">1H</button>
+                        <button class="interval-btn control-button px-3 py-1 rounded-md text-sm font-medium active"
+                            data-interval="4h">4H</button>
+                        <button class="interval-btn control-button px-3 py-1 rounded-md text-sm font-medium"
+                            data-interval="1d">1D</button>
                     </div>
-                     <!-- Leverage Selection -->
+                    <!-- Leverage Selection -->
                     <div id="leverage-buttons" class="flex items-center border rounded-lg p-1">
-                        <button class="leverage-btn control-button px-2 py-1 rounded-md text-sm font-medium" data-leverage="5">5x</button>
-                        <button class="leverage-btn control-button px-2 py-1 rounded-md text-sm font-medium" data-leverage="10">10x</button>
-                        <button class="leverage-btn control-button px-2 py-1 rounded-md text-sm font-medium" data-leverage="25">25x</button>
-                        <button class="leverage-btn control-button px-2 py-1 rounded-md text-sm font-medium active" data-leverage="50">50x</button>
-                        <button class="leverage-btn control-button px-2 py-1 rounded-md text-sm font-medium" data-leverage="100">100x</button>
+                        <button class="leverage-btn control-button px-2 py-1 rounded-md text-sm font-medium"
+                            data-leverage="5">5x</button>
+                        <button class="leverage-btn control-button px-2 py-1 rounded-md text-sm font-medium"
+                            data-leverage="10">10x</button>
+                        <button class="leverage-btn control-button px-2 py-1 rounded-md text-sm font-medium"
+                            data-leverage="25">25x</button>
+                        <button class="leverage-btn control-button px-2 py-1 rounded-md text-sm font-medium active"
+                            data-leverage="50">50x</button>
+                        <button class="leverage-btn control-button px-2 py-1 rounded-md text-sm font-medium"
+                            data-leverage="100">100x</button>
                     </div>
-                     <!-- Drawing Tool -->
-                    <button id="draw-line-tool" class="control-button p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" title="Dibujar línea horizontal">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <!-- Drawing Tool -->
+                    <button id="draw-line-tool"
+                        class="control-button p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        title="Dibujar línea horizontal">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16" />
                         </svg>
                     </button>
-                    <div id="loader" class="hidden w-6 h-6 border-4 border-blue-500 border-t-transparent border-solid rounded-full animate-spin"></div>
-                     <!-- Theme Toggle -->
-                    <button id="theme-toggle" class="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <svg id="theme-icon-light" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                        <svg id="theme-icon-dark" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                    <div id="loader"
+                        class="hidden w-6 h-6 border-4 border-blue-500 border-t-transparent border-solid rounded-full animate-spin">
+                    </div>
+                    <!-- Theme Toggle -->
+                    <button id="theme-toggle"
+                        class="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <svg id="theme-icon-light" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
+                            </path>
+                        </svg>
+                        <svg id="theme-icon-dark" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z">
+                            </path>
+                        </svg>
                     </button>
                 </div>
             </div>
             <!-- Liquidity Concentration Slider -->
             <div id="liquidity-slider-container" class="flex items-center gap-3 text-sm pt-2">
                 <label for="liquidity-slider" class="whitespace-nowrap">Concentraci�n de Liquidez:</label>
-                <input type="range" id="liquidity-slider" min="0" max="100" step="1" value="0" class="w-full rounded-full appearance-none cursor-pointer">
+                <input type="range" id="liquidity-slider" min="0" max="100" step="1" value="0"
+                    class="w-full rounded-full appearance-none cursor-pointer">
                 <span id="slider-value" class="font-mono px-2 py-1 rounded-md">Todos</span>
             </div>
         </div>
@@ -299,9 +350,12 @@
     <main class="flex-grow relative">
         <div id="chart-container" class="absolute top-0 left-0 w-full h-full">
             <!-- Error Message Overlay -->
-            <div id="error-overlay" class="hidden absolute inset-0 bg-red-900 bg-opacity-75 flex flex-col items-center justify-center text-center p-8 z-20">
+            <div id="error-overlay"
+                class="hidden absolute inset-0 bg-red-900 bg-opacity-75 flex flex-col items-center justify-center text-center p-8 z-20">
                 <h3 class="text-2xl font-bold text-red-200">Error de Carga de Datos</h3>
-                <p id="error-message" class="text-red-300 mt-2">No se pudieron obtener los datos esenciales del mercado. Esto puede ser un problema temporal con la API. Por favor, intente seleccionar otro par o recargar la página en unos momentos.</p>
+                <p id="error-message" class="text-red-300 mt-2">No se pudieron obtener los datos esenciales del mercado.
+                    Esto puede ser un problema temporal con la API. Por favor, intente seleccionar otro par o recargar
+                    la página en unos momentos.</p>
             </div>
             <!-- Indicator Labels -->
             <div id="indicator-labels" class="absolute top-0 left-0 w-full h-full pointer-events-none">
@@ -312,7 +366,8 @@
             </div>
             <!-- Toggle Liquidity Panel Button -->
             <button id="toggle-liquidity-panel" title="Toggle liquidity zones panel">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
                 </svg>
             </button>
@@ -462,9 +517,9 @@
         }
 
         function initializeChart() {
-        chartContainer.style.position = chartContainer.style.position || 'relative';
+            chartContainer.style.position = chartContainer.style.position || 'relative';
 
-        chart = LightweightCharts.createChart(chartContainer, {
+            chart = LightweightCharts.createChart(chartContainer, {
                 width: chartContainer.clientWidth,
                 height: chartContainer.clientHeight,
                 layout: {
@@ -515,7 +570,7 @@
             });
 
             candlestickSeries = chart.addCandlestickSeries({ upColor: '#26a69a', downColor: '#ef5350', borderDownColor: '#ef5350', borderUpColor: '#26a69a', wickDownColor: '#ef5350', wickUpColor: '#26a69a', priceScaleId: 'right' });
-            
+
             const mainPaneHeight = 0.6;
             const indicatorPaneHeight = (1 - mainPaneHeight) / 4;
 
@@ -524,7 +579,7 @@
 
             openInterestSeries = chart.addLineSeries({ color: '#2962FF', lineWidth: 2, priceScaleId: 'oi', scaleMargins: { top: mainPaneHeight + indicatorPaneHeight, bottom: 1 - (mainPaneHeight + 2 * indicatorPaneHeight) } });
             chart.priceScale('oi').applyOptions({ scaleMargins: { top: mainPaneHeight + indicatorPaneHeight, bottom: 1 - (mainPaneHeight + 2 * indicatorPaneHeight) } });
-            
+
             longLiqsSeries = chart.addHistogramSeries({ color: 'rgba(239, 83, 80, 0.7)', priceFormat: { type: 'volume' }, priceScaleId: 'liquidations', scaleMargins: { top: mainPaneHeight + 2 * indicatorPaneHeight, bottom: 1 - (mainPaneHeight + 3 * indicatorPaneHeight) } });
             shortLiqsSeries = chart.addHistogramSeries({ color: 'rgba(38, 166, 154, 0.7)', priceFormat: { type: 'volume' }, priceScaleId: 'liquidations', scaleMargins: { top: mainPaneHeight + 2 * indicatorPaneHeight, bottom: 1 - (mainPaneHeight + 3 * indicatorPaneHeight) } });
             chart.priceScale('liquidations').applyOptions({ scaleMargins: { top: mainPaneHeight + 2 * indicatorPaneHeight, bottom: 1 - (mainPaneHeight + 3 * indicatorPaneHeight) } });
@@ -546,7 +601,7 @@
             resizeHeatmapOverlay();
             ensureOverlayOnTop();
         }
-        
+
         function normalizeTimestamp(raw) {
             if (typeof raw === 'number') {
                 return raw > 1e12 ? Math.floor(raw / 1000) : Math.floor(raw);
@@ -651,17 +706,17 @@
         ];
 
         const HEATMAP_COLOR_STOPS_LONG = [
-            { stop: 0, color: [15, 23, 42] },
-            { stop: 0.3, color: [34, 197, 94] },
-            { stop: 0.6, color: [16, 185, 129] },
-            { stop: 1, color: [5, 150, 105] }
+            { stop: 0, color: [15, 23, 42] },      // dark slate
+            { stop: 0.3, color: [20, 184, 166] },  // teal-500
+            { stop: 0.6, color: [13, 148, 136] },  // teal-600
+            { stop: 1, color: [15, 118, 110] }     // teal-700
         ];
 
         const HEATMAP_COLOR_STOPS_SHORT = [
-            { stop: 0, color: [15, 23, 42] },
-            { stop: 0.3, color: [239, 68, 68] },
-            { stop: 0.6, color: [220, 38, 38] },
-            { stop: 1, color: [153, 27, 27] }
+            { stop: 0, color: [15, 23, 42] },      // dark slate
+            { stop: 0.3, color: [220, 38, 38] },   // red-700
+            { stop: 0.6, color: [185, 28, 28] },   // red-800
+            { stop: 1, color: [153, 27, 27] }      // red-900
         ];
 
         const interpolateColor = (stops, t) => {
@@ -764,27 +819,44 @@
                     const top = Math.min(topCoord, bottomCoord) * dpr;
                     const height = Math.max(2 * dpr, Math.abs(topCoord - bottomCoord) * dpr);
 
-                    // Background gradient fill
+                    // Enhanced background gradient fill with higher opacity
                     const gradient = ctx.createLinearGradient(0, top, 0, top + height);
                     const [r, g, b] = interpolateColor(palette, Math.min(1, intensity));
-                    const alphaBase = 0.18 + intensity * 0.42;
+                    const alphaBase = isHistorical ? 0.20 + intensity * 0.30 : 0.30 + intensity * 0.50;
                     gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${alphaBase})`);
-                    gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${alphaBase * 0.6})`);
-                    
-                    ctx.fillStyle = gradient;
-                    ctx.fillRect(x - 2 * dpr, top, width + 4 * dpr, height);
+                    gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${alphaBase * 0.85})`);
+                    gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${alphaBase * 0.7})`);
 
-                    // Border highlight
-                    ctx.strokeStyle = side === 'long' 
-                        ? `rgba(34, 197, 94, ${0.5 + intensity * 0.5})`
-                        : `rgba(239, 68, 68, ${0.5 + intensity * 0.5})`;
-                    ctx.lineWidth = (1.2 + intensity * 1.2) * dpr;
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(x, top, width, height);
+
+                    // Outer glow effect for depth
+                    if (!isHistorical && intensity > 0.3) {
+                        ctx.shadowColor = side === 'long'
+                            ? `rgba(20, 184, 166, ${0.4 * intensity})`
+                            : `rgba(220, 38, 38, ${0.4 * intensity})`;
+                        ctx.shadowBlur = 8 * dpr;
+                        ctx.shadowOffsetX = 0;
+                        ctx.shadowOffsetY = 0;
+                    }
+
+                    // Strong border for definition
+                    ctx.strokeStyle = side === 'long'
+                        ? `rgba(20, 184, 166, ${0.6 + intensity * 0.4})`
+                        : `rgba(220, 38, 38, ${0.6 + intensity * 0.4})`;
+                    ctx.lineWidth = (1.5 + intensity * 1.5) * dpr;
                     ctx.strokeRect(x, top, width, height);
 
-                    // Inner highlight for depth
-                    ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 * intensity})`;
-                    ctx.lineWidth = 0.5 * dpr;
-                    ctx.strokeRect(x + 1 * dpr, top + 1 * dpr, width - 2 * dpr, height - 2 * dpr);
+                    // Reset shadow
+                    ctx.shadowColor = 'transparent';
+                    ctx.shadowBlur = 0;
+
+                    // Subtle inner highlight for professional depth
+                    if (intensity > 0.5) {
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${0.15 * intensity})`;
+                        ctx.lineWidth = 1 * dpr;
+                        ctx.strokeRect(x + 2 * dpr, top + 2 * dpr, width - 4 * dpr, height - 4 * dpr);
+                    }
                 };
 
                 ctx.save();
@@ -792,9 +864,9 @@
                 ctx.rect(0, paneTop, heatmapOverlayCanvas.width, paneHeight);
                 ctx.clip();
 
-                // Render with blend modes for better visuals
-                ctx.globalCompositeOperation = 'lighter';
-                ctx.filter = 'blur(2px)';
+                // Render with clean, professional appearance
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.filter = 'none';
 
                 const renderHistoricalHeatmap = () => {
                     if (!historicalLiquidityZones.length) return;
@@ -802,7 +874,7 @@
                         const { startCoord, endCoord } = resolveTimeRange(zone.startTime, zone.endTime, 1);
                         const topCoord = toCoord(candlestickSeries.priceToCoordinate(zone.high));
                         const bottomCoord = toCoord(candlestickSeries.priceToCoordinate(zone.low));
-                        
+
                         const palette = zone.side === 'long' ? HEATMAP_COLOR_STOPS_LONG : HEATMAP_COLOR_STOPS_SHORT;
                         drawHeatmapBlock({
                             startCoord,
@@ -827,7 +899,7 @@
                             );
                             const topCoord = toCoord(candlestickSeries.priceToCoordinate(cluster.maxPrice));
                             const bottomCoord = toCoord(candlestickSeries.priceToCoordinate(cluster.minPrice));
-                            
+
                             const palette = side === 'long' ? HEATMAP_COLOR_STOPS_LONG : HEATMAP_COLOR_STOPS_SHORT;
                             drawHeatmapBlock({
                                 startCoord,
@@ -849,7 +921,7 @@
                 renderHistoricalHeatmap();
                 ctx.filter = 'blur(0px)';
                 ctx.globalCompositeOperation = 'source-over';
-                
+
                 renderActiveHeatmap();
 
                 ctx.globalCompositeOperation = 'source-over';
@@ -889,7 +961,7 @@
             for (const key in params) {
                 url.searchParams.append(key, params[key]);
             }
-            
+
             console.log(`Requesting data from proxy: ${url}`);
 
             const response = await fetch(url);
@@ -899,7 +971,7 @@
                 console.error('Proxy Error Response:', responseBody);
                 throw new Error(`Proxy API Error for ${endpoint}: ${response.status} ${response.statusText} - ${responseBody}`);
             }
-            
+
             try {
                 const data = JSON.parse(responseBody);
                 console.log(`Data received for ${endpoint}:`, data);
@@ -984,7 +1056,7 @@
             errorOverlay.classList.add('hidden');
             try {
                 const symbol = currentSymbol;
-                
+
                 const to = Math.floor(Date.now() / 1000);
                 const intervalSeconds = intervalToSeconds[currentInterval] || 3600;
                 const from = to - (500 * intervalSeconds); // Fetch approx 500 candles worth of data
@@ -1014,7 +1086,7 @@
 
                 fetchedData = { klines, openInterest, liquidations };
                 renderAllVisuals();
-                
+
             } catch (error) {
                 console.error("An unexpected error occurred during the data update process:", error);
                 errorMessageEl.textContent = `Error inesperado: ${error.message}`;
@@ -1024,20 +1096,20 @@
                 isUpdating = false;
             }
         }
-        
+
         function renderAllVisuals() {
             if (!chart || !candlestickSeries) return;
             const { klines, openInterest, liquidations } = fetchedData;
-            
+
             if (!klines || klines.length === 0) {
                 clearAllSeriesData();
                 return;
             }
-            
+
             const volumeData = klines.map(k => ({ time: k.time, value: k.volume, color: themes[currentTheme].volume(k.close, k.open) }));
             const longLiqsData = klines.map(k => ({ time: k.time, value: 0 }));
             const shortLiqsData = klines.map(k => ({ time: k.time, value: 0 }));
-            
+
             if (liquidations.length > 0) {
                 const klineMap = new Map(klines.map((k, i) => [k.time, i]));
                 liquidations.forEach(liq => {
@@ -1093,9 +1165,9 @@
 
         function updateLiquidityPanel() {
             if (!liquidityZonesContainer) return;
-            
+
             const allZones = [];
-            
+
             // Agregar zonas activas (futuras)
             latestHeatmapClusters.long.forEach(cluster => {
                 allZones.push({
@@ -1106,7 +1178,7 @@
                     type: 'active'
                 });
             });
-            
+
             latestHeatmapClusters.short.forEach(cluster => {
                 allZones.push({
                     price: cluster.price,
@@ -1116,7 +1188,7 @@
                     type: 'active'
                 });
             });
-            
+
             // Agregar zonas históricas
             historicalLiquidityZones.forEach(zone => {
                 allZones.push({
@@ -1129,23 +1201,23 @@
                     low: zone.low
                 });
             });
-            
+
             // Ordenar por valor descendente
             allZones.sort((a, b) => b.value - a.value);
-            
+
             // Limitar a 15 zonas para no saturar
             const displayZones = allZones.slice(0, 15);
-            
+
             // Renderizar zonas
             liquidityZonesContainer.innerHTML = displayZones.map(zone => {
                 const priceStr = zone.price.toFixed(2);
                 const valueStr = formatLiquidityValue(zone.value);
                 const typeLabel = zone.type === 'active' ? '●' : '○';
                 const isLong = zone.side === 'long';
-                const bgColor = zone.type === 'active' 
+                const bgColor = zone.type === 'active'
                     ? (isLong ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)')
                     : 'rgba(56, 189, 248, 0.08)';
-                
+
                 return `
                     <div class="liquidity-zone-item ${zone.side}" style="background-color: ${bgColor};">
                         <div class="zone-price">${typeLabel} ${priceStr}</div>
@@ -1187,7 +1259,7 @@
                 relevantKlines.forEach(kline => {
                     const entryPrice = (kline.high + kline.low) / 2;
                     const positionVolume = kline.volume / (2 * leverages.length);
-                    
+
                     const processLiquidation = (price, volume) => {
                         const basePoolKey = Math.round(price / priceStep);
                         blurKernel.forEach(k => {
@@ -1205,7 +1277,7 @@
 
             const lastPrice = lastKline.close;
             let poolsArray = Array.from(liquidationPools.entries()).map(([price, data]) => ({ price, ...data }));
-            
+
             const maxLiquidity = Math.max(...poolsArray.map(p => p.volume * p.price), 0);
             maxLiquidityObserved = maxLiquidity;
             updateLiquiditySliderLabel();
@@ -1260,11 +1332,11 @@
 
             const drawHeatmap = (pools, seriesArray, maxVolume, type) => {
                 const cappedPools = pools.slice(0, HEATMAP_SERIES_COUNT);
-                
+
                 cappedPools.forEach((pool, i) => {
                     const intensity = Math.min(1, pool.volume / maxVolume);
                     const isLong = type === 'long';
-                    
+
                     const color = isLong
                         ? `rgba(34, 197, 94, ${0.12 + intensity * 0.55})`
                         : `rgba(239, 68, 68, ${0.12 + intensity * 0.55})`;
@@ -1277,7 +1349,7 @@
                     if (i < VISIBLE_LABELS_COUNT) {
                         const liquidityInUSD = pool.totalValue;
                         const title = formatLiquidityValue(liquidityInUSD);
-                        
+
                         const labelLine = candlestickSeries.createPriceLine({
                             price: pool.price,
                             color: 'transparent',
@@ -1372,7 +1444,7 @@
                 zonesDrawn++;
             }
         }
-        
+
         function clearAllSeriesData() {
             if (!candlestickSeries) return;
             candlestickSeries.setData([]);
@@ -1383,7 +1455,7 @@
             oiVolRatioSeries.setData([]);
             clearAllZones();
         }
-        
+
         function handleResize() {
             if (chart) {
                 runWithTimeScaleLock(() => chart.resize(chartContainer.clientWidth, chartContainer.clientHeight));
@@ -1391,7 +1463,7 @@
             resizeHeatmapOverlay();
             drawOverlayClusters();
         }
-        
+
         // --- Event Listeners ---
         document.addEventListener('DOMContentLoaded', () => {
             initializeChart();
@@ -1402,12 +1474,12 @@
                 resetUserTimeScalePreference();
                 maybeAutoFitTimeScale();
             });
-            
+
             // Toggle Liquidity Panel
             togglePanelBtn.addEventListener('click', () => {
                 liquidityPanel.classList.toggle('active');
             });
-            
+
             setInterval(() => {
                 if (!isUpdating) {
                     updateChartData();
@@ -1424,7 +1496,7 @@
                 if (!isDrawingMode || !param.point) return;
 
                 const price = candlestickSeries.coordinateToPrice(param.point.y);
-                
+
                 const lineToRemove = userDrawnLines.find(line => {
                     const linePrice = line.options().price;
                     const lineCoordinate = candlestickSeries.priceToCoordinate(linePrice);
@@ -1452,7 +1524,7 @@
                 currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
                 applyTheme(currentTheme);
             });
-            
+
             symbolSelector.addEventListener('change', (e) => {
                 currentSymbol = e.target.value;
                 resetUserTimeScalePreference();
@@ -1468,14 +1540,14 @@
                 resetUserTimeScalePreference();
                 updateChartData();
             });
-            
+
             leverageButtonsContainer.addEventListener('click', (e) => {
                 const target = e.target.closest('.leverage-btn');
                 if (!target) return;
                 target.classList.toggle('active');
 
                 selectedLeverages = Array.from(leverageButtonsContainer.querySelectorAll('.active'))
-                                    .map(btn => parseInt(btn.dataset.leverage, 10));
+                    .map(btn => parseInt(btn.dataset.leverage, 10));
 
                 if (selectedLeverages.length === 0) {
                     target.classList.add('active');
@@ -1494,6 +1566,5 @@
         });
     </script>
 </body>
+
 </html>
-
-
