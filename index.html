@@ -914,8 +914,8 @@
                         });
                     };
 
-                    renderCollection(latestHeatmapClusters.long, 'short');
-                    renderCollection(latestHeatmapClusters.short, 'long');
+                    renderCollection(latestHeatmapClusters.long, 'long');
+                    renderCollection(latestHeatmapClusters.short, 'short');
                 };
 
                 renderHistoricalHeatmap();
@@ -1402,9 +1402,9 @@
             if (significantLiqs.length === 0) return;
 
             const avgLiqValue = significantLiqs.reduce((sum, l) => sum + l.totalLiqValue, 0) / significantLiqs.length;
-            const liqThreshold = avgLiqValue * 0.5;
+            const liqThreshold = avgLiqValue * 0.2;  // Reduced from 0.5 to 0.2 to show more zones
 
-            const MAX_HISTORICAL_ZONES = 20;
+            const MAX_HISTORICAL_ZONES = 50;  // Increased from 20 to 50
             let zonesDrawn = 0;
 
             for (const liq of significantLiqs) {
