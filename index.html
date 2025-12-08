@@ -379,6 +379,42 @@
                 </div>
                 <div id="liquidity-zones-container" style="flex: 1; overflow-y: auto;"></div>
             </div>
+
+            <!-- Cluster Legend -->
+            <div id="cluster-legend"
+                style="position: absolute; top: 80px; right: 20px; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 8px; padding: 12px 14px; font-size: 11px; z-index: 10; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);">
+                <div style="font-weight: 600; margin-bottom: 10px; font-size: 12px; color: #f1f5f9;">Clusters de
+                    Liquidación</div>
+
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <div
+                        style="width: 24px; height: 16px; background: linear-gradient(to bottom, rgba(220, 38, 38, 0.75), rgba(220, 38, 38, 0.15)); border: 1.5px solid rgba(220, 38, 38, 0.9); border-radius: 2px;">
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 500; color: #fca5a5;">Shorts (Resistencia)</div>
+                        <div style="font-size: 9px; color: rgba(148, 163, 184, 0.9); margin-top: 2px;">Precio ↑ liquida
+                            shorts</div>
+                    </div>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                    <div
+                        style="width: 24px; height: 16px; background: linear-gradient(to bottom, rgba(20, 184, 166, 0.75), rgba(20, 184, 166, 0.15)); border: 1.5px solid rgba(20, 184, 166, 0.9); border-radius: 2px;">
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 500; color: #5eead4;">Longs (Soporte)</div>
+                        <div style="font-size: 9px; color: rgba(148, 163, 184, 0.9); margin-top: 2px;">Precio ↓ liquida
+                            longs</div>
+                    </div>
+                </div>
+
+                <div
+                    style="padding-top: 8px; border-top: 1px solid rgba(148, 163, 184, 0.15); font-size: 10px; color: rgba(148, 163, 184, 0.85);">
+                    <div style="margin-bottom: 4px;">💡 <span style="font-weight: 500;">Intensidad:</span></div>
+                    <div style="font-size: 9px; color: rgba(148, 163, 184, 0.75);">Más oscuro = Mayor liquidez</div>
+                    <div style="font-size: 9px; color: rgba(148, 163, 184, 0.75);">Gradiente = Concentración</div>
+                </div>
+            </div>
         </div>
     </main>
 
@@ -821,13 +857,20 @@
                     const top = Math.min(topCoord, bottomCoord) * dpr;
                     const height = Math.max(2 * dpr, Math.abs(topCoord - bottomCoord) * dpr);
 
-                    // Enhanced background gradient fill with higher opacity
+                    // Enhanced gradient with MUCH MORE visible contrast
                     const gradient = ctx.createLinearGradient(0, top, 0, top + height);
                     const [r, g, b] = interpolateColor(palette, Math.min(1, intensity));
-                    const alphaBase = isHistorical ? 0.20 + intensity * 0.30 : 0.30 + intensity * 0.50;
-                    gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${alphaBase})`);
-                    gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${alphaBase * 0.85})`);
-                    gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${alphaBase * 0.7})`);
+
+                    // More pronounced gradient: top opaque → bottom very transparent
+                    const alphaTop = isHistorical
+                        ? 0.15 + intensity * 0.40
+                        : 0.30 + intensity * 0.60;
+                    const alphaMid = alphaTop * 0.55;      // 55% of top
+                    const alphaBottom = alphaTop * 0.20;   // 20% of top (much lighter)
+
+                    gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${alphaTop})`);
+                    gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${alphaMid})`);
+                    gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${alphaBottom})`);
 
                     ctx.fillStyle = gradient;
                     ctx.fillRect(x, top, width, height);
@@ -842,11 +885,11 @@
                         ctx.shadowOffsetY = 0;
                     }
 
-                    // Strong border for definition
+                    // STRONGER border for better definition
                     ctx.strokeStyle = side === 'long'
-                        ? `rgba(20, 184, 166, ${0.6 + intensity * 0.4})`
-                        : `rgba(220, 38, 38, ${0.6 + intensity * 0.4})`;
-                    ctx.lineWidth = (1.5 + intensity * 1.5) * dpr;
+                        ? `rgba(20, 184, 166, ${0.75 + intensity * 0.25})`  // More opaque
+                        : `rgba(220, 38, 38, ${0.75 + intensity * 0.25})`;
+                    ctx.lineWidth = (2 + intensity * 2.5) * dpr;  // Thicker
                     ctx.strokeRect(x, top, width, height);
 
                     // Reset shadow
