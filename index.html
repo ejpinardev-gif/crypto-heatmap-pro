@@ -596,6 +596,7 @@
             chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
                 if (suppressTimeScaleTracking || !range || range.from === null || range.to === null) return;
                 userHasCustomTimeScale = true;
+                drawOverlayClusters();  // Redraw clusters on scroll/zoom
             });
 
             resizeHeatmapOverlay();
@@ -1428,21 +1429,42 @@
                 const longValue = longLiqs[liq.index]?.value || 0;
                 const shortValue = shortLiqs[liq.index]?.value || 0;
                 const dominantSide = longValue >= shortValue ? 'long' : 'short';
-                const nextTime = klines[liq.index + 1]?.time ?? (klines.length > 1 ? liq.kline.time + (klines[1].time - klines[0].time) : liq.kline.time + 3600);
+
+                // Extend zone duration to current time + 30 days to keep them visible
+                const currentTime = Math.floor(Date.now() / 1000);
+                const nextKlineTime = klines[liq.index + 1]?.time ?? (klines.length > 1 ? liq.kline.time + (klines[1].time - klines[0].time) : liq.kline.time + 3600);
+                const extendedEndTime = Math.max(nextKlineTime, currentTime + (30 * 24 * 60 * 60));  // Extend 30 days
 
                 drawLine(liq.kline.high, true);
                 drawLine(liq.kline.low, false);
 
-                historicalLiquidityZones.push({
+                const zone = {
                     startTime: liq.kline.time,
-                    endTime: nextTime,
+                    endTime: extendedEndTime,
                     high: liq.kline.high,
                     low: liq.kline.low,
                     totalValue: liq.totalLiqValue,
                     side: dominantSide
-                });
+                };
+
+                historicalLiquidityZones.push(zone);
+
+                // Debug logging
+                if (zonesDrawn < 3) {  // Log first 3 zones
+                    console.log(`Historical Zone ${zonesDrawn}:`, {
+                        price: `${zone.low.toFixed(2)}-${zone.high.toFixed(2)}`,
+                        side: zone.side,
+                        value: `$${(zone.totalValue / 1e6).toFixed(2)}M`,
+                        startTime: new Date(zone.startTime * 1000).toISOString(),
+                        endTime: new Date(zone.endTime * 1000).toISOString()
+                    });
+                }
+
                 zonesDrawn++;
             }
+
+            // Summary log
+            console.log(`✅ Created ${historicalLiquidityZones.length} historical liquidation zones`);
         }
 
         function clearAllSeriesData() {
