@@ -240,6 +240,146 @@
         [data-theme='light'] .indicator-label {
             color: rgba(55, 65, 81, 0.6);
         }
+
+        /* Sidebar Panels */
+        .sidebar-panel {
+            position: fixed;
+            top: 0;
+            height: 100vh;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.95));
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            z-index: 100;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        [data-theme='light'] .sidebar-panel {
+            background: linear-gradient(180deg, rgba(249, 250, 251, 0.98), rgba(243, 244, 246, 0.95));
+            border-color: rgba(148, 163, 184, 0.25);
+        }
+
+        .sidebar-panel-left {
+            left: 0;
+            width: 320px;
+            transform: translateX(-100%);
+            border-right: 1px solid rgba(148, 163, 184, 0.15);
+        }
+
+        .sidebar-panel-left.open {
+            transform: translateX(0);
+        }
+
+        .sidebar-panel-right {
+            right: 0;
+            width: 340px;
+            transform: translateX(100%);
+            border-left: 1px solid rgba(148, 163, 184, 0.15);
+        }
+
+        .sidebar-panel-right.open {
+            transform: translateX(0);
+        }
+
+        .sidebar-toggle {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(59, 130, 246, 0.9);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: white;
+            width: 36px;
+            height: 80px;
+            border-radius: 0 8px 8px 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 101;
+            transition: all 0.3s ease;
+            box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .sidebar-toggle:hover {
+            background: rgba(59, 130, 246, 1);
+            width: 40px;
+        }
+
+        .sidebar-toggle-left {
+            left: 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .sidebar-toggle-left.open {
+            left: 320px;
+        }
+
+        .sidebar-toggle-right {
+            right: 0;
+            border-radius: 8px 0 0 8px;
+        }
+
+        .sidebar-toggle-right.open {
+            right: 340px;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+            position: sticky;
+            top: 0;
+            background: inherit;
+            z-index: 10;
+        }
+
+        .sidebar-content {
+            padding: 20px;
+        }
+
+        .sidebar-section {
+            margin-bottom: 24px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .sidebar-section:last-child {
+            border-bottom: none;
+        }
+
+        .sidebar-section-title {
+            font-weight: 600;
+            font-size: 11px;
+            color: #cbd5e1;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 12px;
+        }
+
+        /* Current time indicator */
+        .current-time-line {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, rgba(251, 191, 36, 0.8), rgba(251, 191, 36, 0.3));
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .current-time-label {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(251, 191, 36, 0.9);
+            color: #0f172a;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
     </style>
 </head>
 
@@ -364,152 +504,170 @@
                 <div class="indicator-label" style="top: 81%;">Liquidaciones</div>
                 <div class="indicator-label" style="top: 91%;">Ratio OI/VOL</div>
             </div>
-            <!-- Toggle Liquidity Panel Button -->
-            <button id="toggle-liquidity-panel" title="Toggle liquidity zones panel">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+            <!-- Left Sidebar: Legend & Liquidity Zones -->
+            <button id="toggle-left-sidebar" class="sidebar-toggle sidebar-toggle-left" title="Toggle Legend & Zones">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
                 </svg>
             </button>
-            <!-- Liquidity Info Panel -->
-            <div id="liquidity-panel" class="liquidity-panel">
-                <div style="padding-bottom: 8px; border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
-                    <h3 style="font-weight: 600; font-size: 13px; margin-bottom: 4px;">Zonas de Liquidez</h3>
-                    <div style="font-size: 10px; color: var(--muted-text);">Longs activos / Shorts activos</div>
+
+            <div id="left-sidebar" class="sidebar-panel sidebar-panel-left">
+                <div class="sidebar-header">
+                    <h2 style="font-size: 16px; font-weight: 700; color: #f1f5f9; margin: 0;">📊 Información</h2>
                 </div>
-                <div id="liquidity-zones-container" style="flex: 1; overflow-y: auto;"></div>
+                <div class="sidebar-content">
+                    <!-- Cluster Legend Section -->
+                    <div class="sidebar-section">
+                        <div class="sidebar-section-title">Clusters de Liquidación</div>
+
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                            <div
+                                style="width: 28px; height: 18px; background: linear-gradient(to bottom, rgba(220, 38, 38, 0.75), rgba(220, 38, 38, 0.15)); border: 1.5px solid rgba(220, 38, 38, 0.9); border-radius: 3px;">
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 500; color: #fca5a5; font-size: 12px;">Shorts (Resistencia)
+                                </div>
+                                <div style="font-size: 9px; color: rgba(148, 163, 184, 0.9); margin-top: 2px;">Precio ↑
+                                    liquida shorts</div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                            <div
+                                style="width: 28px; height: 18px; background: linear-gradient(to bottom, rgba(20, 184, 166, 0.75), rgba(20, 184, 166, 0.15)); border: 1.5px solid rgba(20, 184, 166, 0.9); border-radius: 3px;">
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 500; color: #5eead4; font-size: 12px;">Longs (Soporte)</div>
+                                <div style="font-size: 9px; color: rgba(148, 163, 184, 0.9); margin-top: 2px;">Precio ↓
+                                    liquida longs</div>
+                            </div>
+                        </div>
+
+                        <div
+                            style="padding-top: 10px; border-top: 1px solid rgba(148, 163, 184, 0.15); font-size: 10px; color: rgba(148, 163, 184, 0.85);">
+                            <div style="margin-bottom: 6px;">💡 <span style="font-weight: 500;">Intensidad:</span></div>
+                            <div style="font-size: 9px; color: rgba(148, 163, 184, 0.75); margin-bottom: 3px;">• Más
+                                oscuro = Mayor liquidez</div>
+                            <div style="font-size: 9px; color: rgba(148, 163, 184, 0.75);">• Gradiente = Concentración
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Liquidity Zones Section -->
+                    <div class="sidebar-section">
+                        <div class="sidebar-section-title">Zonas de Liquidez</div>
+                        <div style="font-size: 10px; color: var(--muted-text); margin-bottom: 12px;">Longs activos /
+                            Shorts activos</div>
+                        <div id="liquidity-zones-container" style="max-height: 400px; overflow-y: auto;"></div>
+                    </div>
+                </div>
             </div>
 
-            <!-- Cluster Legend -->
-            <div id="cluster-legend"
-                style="position: absolute; top: 80px; left: 20px; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 8px; padding: 12px 14px; font-size: 11px; z-index: 10; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);">
-                <div style="font-weight: 600; margin-bottom: 10px; font-size: 12px; color: #f1f5f9;">Clusters de
-                    Liquidación</div>
+            <!-- Right Sidebar: Analytics -->
+            <button id="toggle-right-sidebar" class="sidebar-toggle sidebar-toggle-right" title="Toggle Analytics">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                </svg>
+            </button>
 
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                    <div
-                        style="width: 24px; height: 16px; background: linear-gradient(to bottom, rgba(220, 38, 38, 0.75), rgba(220, 38, 38, 0.15)); border: 1.5px solid rgba(220, 38, 38, 0.9); border-radius: 2px;">
-                    </div>
-                    <div style="flex: 1;">
-                        <div style="font-weight: 500; color: #fca5a5;">Shorts (Resistencia)</div>
-                        <div style="font-size: 9px; color: rgba(148, 163, 184, 0.9); margin-top: 2px;">Precio ↑ liquida
-                            shorts</div>
-                    </div>
-                </div>
-
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                    <div
-                        style="width: 24px; height: 16px; background: linear-gradient(to bottom, rgba(20, 184, 166, 0.75), rgba(20, 184, 166, 0.15)); border: 1.5px solid rgba(20, 184, 166, 0.9); border-radius: 2px;">
-                    </div>
-                    <div style="flex: 1;">
-                        <div style="font-weight: 500; color: #5eead4;">Longs (Soporte)</div>
-                        <div style="font-size: 9px; color: rgba(148, 163, 184, 0.9); margin-top: 2px;">Precio ↓ liquida
-                            longs</div>
-                    </div>
-                </div>
-
-                <div
-                    style="padding-top: 8px; border-top: 1px solid rgba(148, 163, 184, 0.15); font-size: 10px; color: rgba(148, 163, 184, 0.85);">
-                    <div style="margin-bottom: 4px;">💡 <span style="font-weight: 500;">Intensidad:</span></div>
-                    <div style="font-size: 9px; color: rgba(148, 163, 184, 0.75);">Más oscuro = Mayor liquidez</div>
-                    <div style="font-size: 9px; color: rgba(148, 163, 184, 0.75);">Gradiente = Concentración</div>
-                </div>
-            </div>
-
-            <!-- Analytics Panel -->
-            <div id="analytics-panel"
-                style="position: absolute; bottom: 20px; right: 20px; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 8px; padding: 14px 16px; font-size: 11px; z-index: 10; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); max-width: 280px;">
-                <div
-                    style="font-weight: 600; margin-bottom: 12px; font-size: 12px; color: #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
-                    <span>📊 Cluster Analytics</span>
-                    <button onclick="updateAnalyticsUI()"
-                        style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 14px; padding: 0;"
-                        title="Refresh">🔄</button>
-                </div>
-
-                <!-- Basic Stats -->
-                <div
-                    style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                        <span style="color: rgba(148, 163, 184, 0.9);">Total Tracked:</span>
-                        <span id="total-tracked" style="font-weight: 600; color: #f1f5f9;">0</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                        <span style="color: rgba(148, 163, 184, 0.9);">Touched:</span>
-                        <span id="total-touched" style="font-weight: 600; color: #60a5fa;">0 (0%)</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between;">
-                        <span style="color: rgba(148, 163, 184, 0.9);">Bounce Rate:</span>
-                        <span id="bounce-rate" style="font-weight: 600; color: #34d399;">0%</span>
-                    </div>
-                </div>
-
-                <!-- Outcome Breakdown -->
-                <div
-                    style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
-                    <div style="font-weight: 500; margin-bottom: 6px; font-size: 10px; color: #cbd5e1;">Outcomes:</div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 10px;">
-                        <span style="color: rgba(148, 163, 184, 0.85);">Strong Bounce:</span>
-                        <span id="strong-bounce" style="color: #10b981;">0 (0%)</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 10px;">
-                        <span style="color: rgba(148, 163, 184, 0.85);">Weak Bounce:</span>
-                        <span id="weak-bounce" style="color: #3b82f6;">0 (0%)</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 10px;">
-                        <span style="color: rgba(148, 163, 184, 0.85);">Breakthrough:</span>
-                        <span id="breakthrough" style="color: #ef4444;">0 (0%)</span>
-                    </div>
-                </div>
-
-                <!-- Performance by Side -->
-                <div
-                    style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
-                    <div style="font-weight: 500; margin-bottom: 6px; font-size: 10px; color: #cbd5e1;">Performance by
-                        Side:</div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 10px;">
-                        <span style="color: #5eead4;">Longs:</span>
-                        <span id="long-performance" style="color: #5eead4;">0% (0/0)</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 10px;">
-                        <span style="color: #fca5a5;">Shorts:</span>
-                        <span id="short-performance" style="color: #fca5a5;">0% (0/0)</span>
-                    </div>
-                </div>
-
-                <!-- Performance by Intensity -->
-                <div
-                    style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
-                    <div style="font-weight: 500; margin-bottom: 6px; font-size: 10px; color: #cbd5e1;">By Intensity:
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 10px;">
-                        <span style="color: rgba(148, 163, 184, 0.85);">High (>70%):</span>
-                        <span id="high-intensity" style="color: #f1f5f9;">0% (0)</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 10px;">
-                        <span style="color: rgba(148, 163, 184, 0.85);">Med (40-70%):</span>
-                        <span id="med-intensity" style="color: #f1f5f9;">0% (0)</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 10px;">
-                        <span style="color: rgba(148, 163, 184, 0.85);">Low (<40%):< /span>
-                                <span id="low-intensity" style="color: #f1f5f9;">0% (0)</span>
-                    </div>
-                </div>
-
-                <!-- Key Metric -->
-                <div
-                    style="margin-bottom: 12px; padding: 8px; background: rgba(59, 130, 246, 0.1); border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.2);">
+            <div id="right-sidebar" class="sidebar-panel sidebar-panel-right">
+                <div class="sidebar-header">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-weight: 600; color: #60a5fa; font-size: 10px;">Avg Bounce:</span>
-                        <span id="avg-bounce" style="font-weight: 700; color: #60a5fa; font-size: 14px;">0%</span>
+                        <h2 style="font-size: 16px; font-weight: 700; color: #f1f5f9; margin: 0;">📊 Cluster Analytics
+                        </h2>
+                        <button onclick="updateAnalyticsUI()"
+                            style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 18px; padding: 4px;"
+                            title="Refresh">🔄</button>
                     </div>
                 </div>
+                <div class="sidebar-content">
+                    <!-- Basic Stats -->
+                    <div class="sidebar-section">
+                        <div class="sidebar-section-title">Estadísticas Generales</div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="color: rgba(148, 163, 184, 0.9); font-size: 11px;">Total Tracked:</span>
+                            <span id="total-tracked" style="font-weight: 600; color: #f1f5f9; font-size: 11px;">0</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="color: rgba(148, 163, 184, 0.9); font-size: 11px;">Touched:</span>
+                            <span id="total-touched" style="font-weight: 600; color: #60a5fa; font-size: 11px;">0
+                                (0%)</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: rgba(148, 163, 184, 0.9); font-size: 11px;">Bounce Rate:</span>
+                            <span id="bounce-rate" style="font-weight: 600; color: #34d399; font-size: 11px;">0%</span>
+                        </div>
+                    </div>
 
-                <!-- Export Button -->
-                <button onclick="exportAnalytics()"
-                    style="width: 100%; padding: 8px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); transition: all 0.2s;">
-                    📥 Export to CSV
-                </button>
+                    <!-- Outcome Breakdown -->
+                    <div class="sidebar-section">
+                        <div class="sidebar-section-title">Resultados</div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                            <span style="color: rgba(148, 163, 184, 0.85); font-size: 10px;">Strong Bounce:</span>
+                            <span id="strong-bounce" style="color: #10b981; font-size: 10px;">0 (0%)</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                            <span style="color: rgba(148, 163, 184, 0.85); font-size: 10px;">Weak Bounce:</span>
+                            <span id="weak-bounce" style="color: #3b82f6; font-size: 10px;">0 (0%)</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: rgba(148, 163, 184, 0.85); font-size: 10px;">Breakthrough:</span>
+                            <span id="breakthrough" style="color: #ef4444; font-size: 10px;">0 (0%)</span>
+                        </div>
+                    </div>
+
+                    <!-- Performance by Side -->
+                    <div class="sidebar-section">
+                        <div class="sidebar-section-title">Por Lado</div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                            <span style="color: #5eead4; font-size: 10px;">Longs:</span>
+                            <span id="long-performance" style="color: #5eead4; font-size: 10px;">0% (0/0)</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #fca5a5; font-size: 10px;">Shorts:</span>
+                            <span id="short-performance" style="color: #fca5a5; font-size: 10px;">0% (0/0)</span>
+                        </div>
+                    </div>
+
+                    <!-- Performance by Intensity -->
+                    <div class="sidebar-section">
+                        <div class="sidebar-section-title">Por Intensidad</div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                            <span style="color: rgba(148, 163, 184, 0.85); font-size: 10px;">High (>70%):</span>
+                            <span id="high-intensity" style="color: #f1f5f9; font-size: 10px;">0% (0)</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                            <span style="color: rgba(148, 163, 184, 0.85); font-size: 10px;">Med (40-70%):</span>
+                            <span id="med-intensity" style="color: #f1f5f9; font-size: 10px;">0% (0)</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: rgba(148, 163, 184, 0.85); font-size: 10px;">Low (<40%):< /span>
+                                    <span id="low-intensity" style="color: #f1f5f9; font-size: 10px;">0% (0)</span>
+                        </div>
+                    </div>
+
+                    <!-- Key Metric -->
+                    <div class="sidebar-section">
+                        <div
+                            style="padding: 12px; background: rgba(59, 130, 246, 0.1); border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.2);">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-weight: 600; color: #60a5fa; font-size: 11px;">Avg Bounce:</span>
+                                <span id="avg-bounce"
+                                    style="font-weight: 700; color: #60a5fa; font-size: 16px;">0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Export Button -->
+                    <div class="sidebar-section">
+                        <button onclick="exportAnalytics()"
+                            style="width: 100%; padding: 10px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); transition: all 0.2s;">
+                            📥 Export to CSV
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
@@ -529,9 +687,13 @@
         const errorOverlay = document.getElementById('error-overlay');
         const errorMessageEl = document.getElementById('error-message');
         const drawLineTool = document.getElementById('draw-line-tool');
-        const liquidityPanel = document.getElementById('liquidity-panel');
-        const togglePanelBtn = document.getElementById('toggle-liquidity-panel');
         const liquidityZonesContainer = document.getElementById('liquidity-zones-container');
+
+        // Sidebar elements
+        const leftSidebar = document.getElementById('left-sidebar');
+        const rightSidebar = document.getElementById('right-sidebar');
+        const toggleLeftBtn = document.getElementById('toggle-left-sidebar');
+        const toggleRightBtn = document.getElementById('toggle-right-sidebar');
 
         const heatmapOverlayCanvas = document.createElement('canvas');
         heatmapOverlayCanvas.id = 'liquidity-heatmap-overlay';
@@ -1033,13 +1195,28 @@
                 };
 
                 const renderActiveHeatmap = () => {
+                    // Get the last candle time to determine the "current time" boundary
+                    const lastCandleTime = fetchedData.klines && fetchedData.klines.length > 0
+                        ? fetchedData.klines[fetchedData.klines.length - 1].time
+                        : null;
+
                     const renderCollection = (collection, side, isHistorical = false) => {
                         collection.forEach(cluster => {
+                            // For active (non-historical) clusters, only draw in future projection area
+                            let startTime = cluster.startTime;
+
+                            if (!isHistorical && lastCandleTime) {
+                                // Force clusters to start from the last candle time (current time)
+                                // This prevents overlap with existing candles
+                                startTime = Math.max(cluster.startTime, lastCandleTime);
+                            }
+
                             const { startCoord, endCoord } = resolveTimeRange(
-                                cluster.startTime,
+                                startTime,
                                 cluster.endTime,
                                 FUTURE_BARS_PROJECTION
                             );
+
                             const topCoord = toCoord(candlestickSeries.priceToCoordinate(cluster.maxPrice));
                             const bottomCoord = toCoord(candlestickSeries.priceToCoordinate(cluster.minPrice));
 
@@ -1057,11 +1234,11 @@
                         });
                     };
 
-                    // Render active clusters (from last candle)
+                    // Render active clusters (from last candle) - only in future area
                     renderCollection(latestHeatmapClusters.long, 'long', false);
                     renderCollection(latestHeatmapClusters.short, 'short', false);
 
-                    // Render historical clusters (from past candles)
+                    // Render historical clusters (from past candles) - can be anywhere
                     renderCollection(historicalHeatmapClusters.long, 'long', true);
                     renderCollection(historicalHeatmapClusters.short, 'short', true);
                 };
@@ -2173,9 +2350,15 @@
                 maybeAutoFitTimeScale();
             });
 
-            // Toggle Liquidity Panel
-            togglePanelBtn.addEventListener('click', () => {
-                liquidityPanel.classList.toggle('active');
+            // Sidebar toggle logic
+            toggleLeftBtn.addEventListener('click', () => {
+                leftSidebar.classList.toggle('open');
+                toggleLeftBtn.classList.toggle('open');
+            });
+
+            toggleRightBtn.addEventListener('click', () => {
+                rightSidebar.classList.toggle('open');
+                toggleRightBtn.classList.toggle('open');
             });
 
             setInterval(() => {
