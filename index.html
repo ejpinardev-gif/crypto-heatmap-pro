@@ -1646,7 +1646,10 @@
             const klines = fetchedData.klines;
             if (!klines || klines.length === 0) return;
 
-            const currentPrice = klines[klines.length - 1].close;
+            const lastCandle = klines[klines.length - 1];
+            const currentPrice = lastCandle.close;
+            const currentHigh = lastCandle.high;
+            const currentLow = lastCandle.low;
             const currentTime = Date.now();
 
             // Check active clusters
@@ -1668,13 +1671,16 @@
                     saveClusterToTracking(cluster);
                 }
 
-                // Check if price touched cluster
-                if (!cluster.touched && currentPrice >= cluster.minPrice && currentPrice <= cluster.maxPrice) {
+                // Check if price touched cluster (check high/low range, not just close)
+                // A touch occurs if the candle's high/low range intersects with the cluster's price range
+                const candleTouchedCluster = (currentHigh >= cluster.minPrice && currentLow <= cluster.maxPrice);
+
+                if (!cluster.touched && candleTouchedCluster) {
                     cluster.touched = true;
                     cluster.touchedAt = currentTime;
                     cluster.touchPrice = currentPrice;
 
-                    console.log(`🎯 Cluster touched! ${cluster.side} at $${currentPrice.toFixed(2)}`);
+                    console.log(`🎯 Cluster touched! ${cluster.side} at $${currentPrice.toFixed(2)} (range: $${cluster.minPrice.toFixed(2)}-$${cluster.maxPrice.toFixed(2)})`);
 
                     // Update cluster in database
                     saveClusterToTracking(cluster);
@@ -2058,7 +2064,7 @@
 
                     const series = seriesArray[i];
                     series.applyOptions({ color, lineWidth });
-                    series.setData([{ time: lastCandleTime, value: pool.price }, { time: futureTime, value: pool.price }]);
+                    series.setData([{ time: pool.startTime, value: pool.price }, { time: pool.endTime, value: pool.price }]);
 
                     if (i < VISIBLE_LABELS_COUNT) {
                         const liquidityInUSD = pool.totalValue;
@@ -2082,14 +2088,17 @@
                 }
             };
 
+            // Calculate start time as AFTER the last candle (add one interval)
+            const clusterStartTime = lastCandleTime + intervalSeconds;
+
             const longClustersWithTime = longClusters.map(cluster => ({
                 ...cluster,
-                startTime: lastCandleTime,
+                startTime: clusterStartTime,  // Start AFTER last candle
                 endTime: futureTime
             }));
             const shortClustersWithTime = shortClusters.map(cluster => ({
                 ...cluster,
-                startTime: lastCandleTime,
+                startTime: clusterStartTime,  // Start AFTER last candle
                 endTime: futureTime
             }));
 
