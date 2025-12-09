@@ -1416,6 +1416,16 @@
             });
         }
 
+        // Normalize intensity value to 0-1 range
+        function normalizeIntensity(totalValue) {
+            if (!totalValue || totalValue <= 0) return 0;
+            if (!maxLiquidityObserved || maxLiquidityObserved <= 0) return 0.5; // Default to medium if no max observed
+
+            // Normalize to 0-1 range based on max observed liquidity
+            const normalized = Math.min(totalValue / maxLiquidityObserved, 1);
+            return normalized;
+        }
+
         // Save cluster to tracking database
         async function saveClusterToTracking(cluster) {
             if (!trackingEnabled || !clusterTrackingDB) return;
