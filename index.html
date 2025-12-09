@@ -2256,221 +2256,217 @@
             initClusterTrackingDB().catch(err => {
                 console.warn('⚠️ Cluster tracking disabled:', err);
             });
-            ```
-
-            const significantLiqs = totalLiqs
-                .filter(l => l.totalLiqValue > 0)
-                .sort((a, b) => b.totalLiqValue - a.totalLiqValue);
-
-            if (significantLiqs.length === 0) return;
-
-            const avgLiqValue = significantLiqs.reduce((sum, l) => sum + l.totalLiqValue, 0) / significantLiqs.length;
-            const liqThreshold = avgLiqValue * 0.2;  // Reduced from 0.5 to 0.2 to show more zones
-
-            const MAX_HISTORICAL_ZONES = 50;  // Increased from 20 to 50
-            let zonesDrawn = 0;
-
-            for (const liq of significantLiqs) {
-                if (zonesDrawn >= MAX_HISTORICAL_ZONES) break;
-                if (liq.totalLiqValue < liqThreshold) continue;
-
-                const drawLine = (price, isTop) => {
-                    const line = candlestickSeries.createPriceLine({
-                        price: price,
-                        color: '#808080',
-                        lineWidth: 1,
-                        lineStyle: LightweightCharts.LineStyle.Dashed,
-                        axisLabelVisible: isTop,
-                        title: isTop ? `$${ (liq.totalLiqValue / 1e6).toFixed(1) } M` : '',
-                        axisLabelColor: '#808080',
-                        axisLabelTextColor: '#ffffff',
-                    });
-                    historicalPriceLines.push(line);
-                };
-
-                const longValue = longLiqs[liq.index]?.value || 0;
-                const shortValue = shortLiqs[liq.index]?.value || 0;
-                const dominantSide = longValue >= shortValue ? 'long' : 'short';
-
-                // Extend zone duration to current time + 30 days to keep them visible
-                const currentTime = Math.floor(Date.now() / 1000);
-                const nextKlineTime = klines[liq.index + 1]?.time ?? (klines.length > 1 ? liq.kline.time + (klines[1].time - klines[0].time) : liq.kline.time + 3600);
-                const extendedEndTime = Math.max(nextKlineTime, currentTime + (30 * 24 * 60 * 60));  // Extend 30 days
-
-                drawLine(liq.kline.high, true);
-                drawLine(liq.kline.low, false);
-
-                const zone = {
-                    startTime: liq.kline.time,
-                    endTime: extendedEndTime,
-                    high: liq.kline.high,
-                    low: liq.kline.low,
-                    totalValue: liq.totalLiqValue,
-                    side: dominantSide
-                };
-
-                historicalLiquidityZones.push(zone);
-
-                // Debug logging
-                if (zonesDrawn < 3) {  // Log first 3 zones
-                    console.log(`Historical Zone ${ zonesDrawn }: `, {
-                        price: `${ zone.low.toFixed(2) } -${ zone.high.toFixed(2) } `,
-                        side: zone.side,
-                        value: `$${ (zone.totalValue / 1e6).toFixed(2) } M`,
-                        startTime: new Date(zone.startTime * 1000).toISOString(),
-                        endTime: new Date(zone.endTime * 1000).toISOString()
-                    });
-                }
-
-                zonesDrawn++;
-            }
-
-            // Summary log
-            console.log(`✅ Created ${ historicalLiquidityZones.length } historical liquidation zones`);
-        }
-
-        function clearAllSeriesData() {
-            if (!candlestickSeries) return;
-            candlestickSeries.setData([]);
-            volumeSeries.setData([]);
-            openInterestSeries.setData([]);
-            longLiqsSeries.setData([]);
-            shortLiqsSeries.setData([]);
-            oiVolRatioSeries.setData([]);
-            clearAllZones();
-        }
-
-        function handleResize() {
-            if (chart) {
-                runWithTimeScaleLock(() => chart.resize(chartContainer.clientWidth, chartContainer.clientHeight));
-            }
-            resizeHeatmapOverlay();
-            drawOverlayClusters();
-        }
-
-        // --- Event Listeners ---
-        document.addEventListener('DOMContentLoaded', () => {
-            initializeChart();
-            applyTheme(currentTheme);
-            updateLiquiditySliderLabel();
-            updateChartData();
-            chartContainer.addEventListener('dblclick', () => {
-                resetUserTimeScalePreference();
-                maybeAutoFitTimeScale();
-            });
-
-            // Toggle Liquidity Panel
-            togglePanelBtn.addEventListener('click', () => {
-                liquidityPanel.classList.toggle('active');
-            });
-
-            setInterval(() => {
-                if (!isUpdating) {
-                    updateChartData();
-                }
-            }, 30000);
-
-            // Drawing Tool Logic
-            drawLineTool.addEventListener('click', () => {
-                isDrawingMode = !isDrawingMode;
-                drawLineTool.classList.toggle('active', isDrawingMode);
-            });
-
-            chart.subscribeClick(param => {
-                if (!isDrawingMode || !param.point) return;
-
-                const price = candlestickSeries.coordinateToPrice(param.point.y);
-
-                const lineToRemove = userDrawnLines.find(line => {
-                    const linePrice = line.options().price;
-                    const lineCoordinate = candlestickSeries.priceToCoordinate(linePrice);
-                    if (lineCoordinate === null || lineCoordinate === undefined) return false;
-                    return Math.abs(lineCoordinate - param.point.y) < 5;
-                });
-
-                if (lineToRemove) {
-                    candlestickSeries.removePriceLine(lineToRemove);
-                    userDrawnLines = userDrawnLines.filter(l => l !== lineToRemove);
-                } else {
-                    const newLine = candlestickSeries.createPriceLine({
-                        price: price,
-                        color: '#2962FF',
-                        lineWidth: 2,
-                        lineStyle: LightweightCharts.LineStyle.Solid,
-                        axisLabelVisible: true,
-                        title: ''
-                    });
-                    userDrawnLines.push(newLine);
-                }
-            });
-
-            themeToggle.addEventListener('click', () => {
-                currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
-                applyTheme(currentTheme);
-            });
-
-            symbolSelector.addEventListener('change', (e) => {
-                currentSymbol = e.target.value;
-                resetUserTimeScalePreference();
-                updateChartData();
-            });
-
-            intervalButtonsContainer.addEventListener('click', (e) => {
-                const target = e.target.closest('.interval-btn');
-                if (!target) return;
-                intervalButtonsContainer.querySelector('.active').classList.remove('active');
-                target.classList.add('active');
-                currentInterval = target.dataset.interval;
-                resetUserTimeScalePreference();
-                updateChartData();
-            });
-
-            leverageButtonsContainer.addEventListener('click', (e) => {
-                const target = e.target.closest('.leverage-btn');
-                if (!target) return;
-                target.classList.toggle('active');
-
-                selectedLeverages = Array.from(leverageButtonsContainer.querySelectorAll('.active'))
-                    .map(btn => parseInt(btn.dataset.leverage, 10));
-
-                if (selectedLeverages.length === 0) {
-                    target.classList.add('active');
-                    selectedLeverages.push(parseInt(target.dataset.leverage, 10));
-                }
-                renderAllVisuals();
-            });
-
-            liquiditySlider.addEventListener('input', (e) => {
-                liquidityThresholdPct = Number(e.target.value) / 100;
-                updateLiquiditySliderLabel();
-                renderAllVisuals();
-            });
-
-            window.addEventListener('resize', handleResize);
-
-            // Initialize cluster tracking database
-            initClusterTrackingDB().catch(err => {
-                console.warn('⚠️ Cluster tracking disabled:', err);
-            });
 
             // Check cluster touches periodically (every 5 seconds)
             setInterval(() => {
                 checkClusterTouches();
             }, 5000);
-            
+
+
             // Update analytics UI periodically (every 10 seconds)
             setInterval(() => {
                 updateAnalyticsUI();
             }, 10000);
-            
+
             // Initial analytics update
             setTimeout(() => {
                 updateAnalyticsUI();
             }, 2000);
-            
+
             console.log('🚀 Liquidation Zone Heatmap initialized with cluster tracking');
         });
     </script>
 </body>
 
 </html>
+
+const significantLiqs = totalLiqs
+.filter(l => l.totalLiqValue > 0)
+.sort((a, b) => b.totalLiqValue - a.totalLiqValue);
+
+if (significantLiqs.length === 0) return;
+
+const avgLiqValue = significantLiqs.reduce((sum, l) => sum + l.totalLiqValue, 0) / significantLiqs.length;
+const liqThreshold = avgLiqValue * 0.2; // Reduced from 0.5 to 0.2 to show more zones
+
+const MAX_HISTORICAL_ZONES = 50; // Increased from 20 to 50
+let zonesDrawn = 0;
+
+for (const liq of significantLiqs) {
+if (zonesDrawn >= MAX_HISTORICAL_ZONES) break;
+if (liq.totalLiqValue < liqThreshold) continue; const drawLine=(price, isTop)=> {
+    const line = candlestickSeries.createPriceLine({
+    price: price,
+    color: '#808080',
+    lineWidth: 1,
+    lineStyle: LightweightCharts.LineStyle.Dashed,
+    axisLabelVisible: isTop,
+    title: isTop ? `$${ (liq.totalLiqValue / 1e6).toFixed(1) } M` : '',
+    axisLabelColor: '#808080',
+    axisLabelTextColor: '#ffffff',
+    });
+    historicalPriceLines.push(line);
+    };
+
+    const longValue = longLiqs[liq.index]?.value || 0;
+    const shortValue = shortLiqs[liq.index]?.value || 0;
+    const dominantSide = longValue >= shortValue ? 'long' : 'short';
+
+    // Extend zone duration to current time + 30 days to keep them visible
+    const currentTime = Math.floor(Date.now() / 1000);
+    const nextKlineTime = klines[liq.index + 1]?.time ?? (klines.length > 1 ? liq.kline.time + (klines[1].time -
+    klines[0].time) : liq.kline.time + 3600);
+    const extendedEndTime = Math.max(nextKlineTime, currentTime + (30 * 24 * 60 * 60)); // Extend 30 days
+
+    drawLine(liq.kline.high, true);
+    drawLine(liq.kline.low, false);
+
+    const zone = {
+    startTime: liq.kline.time,
+    endTime: extendedEndTime,
+    high: liq.kline.high,
+    low: liq.kline.low,
+    totalValue: liq.totalLiqValue,
+    side: dominantSide
+    };
+
+    historicalLiquidityZones.push(zone);
+
+    // Debug logging
+    if (zonesDrawn < 3) { // Log first 3 zones console.log(`Historical Zone ${ zonesDrawn }: `, { price: `${
+        zone.low.toFixed(2) } -${ zone.high.toFixed(2) } `, side: zone.side, value: `$${ (zone.totalValue /
+        1e6).toFixed(2) } M`, startTime: new Date(zone.startTime * 1000).toISOString(), endTime: new Date(zone.endTime *
+        1000).toISOString() }); } zonesDrawn++; } // Summary log console.log(`✅ Created ${
+        historicalLiquidityZones.length } historical liquidation zones`); } function clearAllSeriesData() { if
+        (!candlestickSeries) return; candlestickSeries.setData([]); volumeSeries.setData([]);
+        openInterestSeries.setData([]); longLiqsSeries.setData([]); shortLiqsSeries.setData([]);
+        oiVolRatioSeries.setData([]); clearAllZones(); } function handleResize() { if (chart) {
+        runWithTimeScaleLock(()=> chart.resize(chartContainer.clientWidth, chartContainer.clientHeight));
+        }
+        resizeHeatmapOverlay();
+        drawOverlayClusters();
+        }
+
+        // --- Event Listeners ---
+        document.addEventListener('DOMContentLoaded', () => {
+        initializeChart();
+        applyTheme(currentTheme);
+        updateLiquiditySliderLabel();
+        updateChartData();
+        chartContainer.addEventListener('dblclick', () => {
+        resetUserTimeScalePreference();
+        maybeAutoFitTimeScale();
+        });
+
+        // Toggle Liquidity Panel
+        togglePanelBtn.addEventListener('click', () => {
+        liquidityPanel.classList.toggle('active');
+        });
+
+        setInterval(() => {
+        if (!isUpdating) {
+        updateChartData();
+        }
+        }, 30000);
+
+        // Drawing Tool Logic
+        drawLineTool.addEventListener('click', () => {
+        isDrawingMode = !isDrawingMode;
+        drawLineTool.classList.toggle('active', isDrawingMode);
+        });
+
+        chart.subscribeClick(param => {
+        if (!isDrawingMode || !param.point) return;
+
+        const price = candlestickSeries.coordinateToPrice(param.point.y);
+
+        const lineToRemove = userDrawnLines.find(line => {
+        const linePrice = line.options().price;
+        const lineCoordinate = candlestickSeries.priceToCoordinate(linePrice);
+        if (lineCoordinate === null || lineCoordinate === undefined) return false;
+        return Math.abs(lineCoordinate - param.point.y) < 5; }); if (lineToRemove) {
+            candlestickSeries.removePriceLine(lineToRemove); userDrawnLines=userDrawnLines.filter(l=> l !==
+            lineToRemove);
+            } else {
+            const newLine = candlestickSeries.createPriceLine({
+            price: price,
+            color: '#2962FF',
+            lineWidth: 2,
+            lineStyle: LightweightCharts.LineStyle.Solid,
+            axisLabelVisible: true,
+            title: ''
+            });
+            userDrawnLines.push(newLine);
+            }
+            });
+
+            themeToggle.addEventListener('click', () => {
+            currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(currentTheme);
+            });
+
+            symbolSelector.addEventListener('change', (e) => {
+            currentSymbol = e.target.value;
+            resetUserTimeScalePreference();
+            updateChartData();
+            });
+
+            intervalButtonsContainer.addEventListener('click', (e) => {
+            const target = e.target.closest('.interval-btn');
+            if (!target) return;
+            intervalButtonsContainer.querySelector('.active').classList.remove('active');
+            target.classList.add('active');
+            currentInterval = target.dataset.interval;
+            resetUserTimeScalePreference();
+            updateChartData();
+            });
+
+            leverageButtonsContainer.addEventListener('click', (e) => {
+            const target = e.target.closest('.leverage-btn');
+            if (!target) return;
+            target.classList.toggle('active');
+
+            selectedLeverages = Array.from(leverageButtonsContainer.querySelectorAll('.active'))
+            .map(btn => parseInt(btn.dataset.leverage, 10));
+
+            if (selectedLeverages.length === 0) {
+            target.classList.add('active');
+            selectedLeverages.push(parseInt(target.dataset.leverage, 10));
+            }
+            renderAllVisuals();
+            });
+
+            liquiditySlider.addEventListener('input', (e) => {
+            liquidityThresholdPct = Number(e.target.value) / 100;
+            updateLiquiditySliderLabel();
+            renderAllVisuals();
+            });
+
+            window.addEventListener('resize', handleResize);
+
+            // Initialize cluster tracking database
+            initClusterTrackingDB().catch(err => {
+            console.warn('⚠️ Cluster tracking disabled:', err);
+            });
+
+            // Check cluster touches periodically (every 5 seconds)
+            setInterval(() => {
+            checkClusterTouches();
+            }, 5000);
+
+            // Update analytics UI periodically (every 10 seconds)
+            setInterval(() => {
+            updateAnalyticsUI();
+            }, 10000);
+
+            // Initial analytics update
+            setTimeout(() => {
+            updateAnalyticsUI();
+            }, 2000);
+
+            console.log('🚀 Liquidation Zone Heatmap initialized with cluster tracking');
+            });
+            </script>
+            </body>
+
+            </html>
