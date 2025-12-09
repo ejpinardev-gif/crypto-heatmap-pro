@@ -415,6 +415,102 @@
                     <div style="font-size: 9px; color: rgba(148, 163, 184, 0.75);">Gradiente = Concentración</div>
                 </div>
             </div>
+
+            <!-- Analytics Panel -->
+            <div id="analytics-panel"
+                style="position: absolute; bottom: 20px; right: 20px; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 8px; padding: 14px 16px; font-size: 11px; z-index: 10; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); max-width: 280px;">
+                <div
+                    style="font-weight: 600; margin-bottom: 12px; font-size: 12px; color: #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+                    <span>📊 Cluster Analytics</span>
+                    <button onclick="updateAnalyticsUI()"
+                        style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 14px; padding: 0;"
+                        title="Refresh">🔄</button>
+                </div>
+
+                <!-- Basic Stats -->
+                <div
+                    style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span style="color: rgba(148, 163, 184, 0.9);">Total Tracked:</span>
+                        <span id="total-tracked" style="font-weight: 600; color: #f1f5f9;">0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span style="color: rgba(148, 163, 184, 0.9);">Touched:</span>
+                        <span id="total-touched" style="font-weight: 600; color: #60a5fa;">0 (0%)</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: rgba(148, 163, 184, 0.9);">Bounce Rate:</span>
+                        <span id="bounce-rate" style="font-weight: 600; color: #34d399;">0%</span>
+                    </div>
+                </div>
+
+                <!-- Outcome Breakdown -->
+                <div
+                    style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
+                    <div style="font-weight: 500; margin-bottom: 6px; font-size: 10px; color: #cbd5e1;">Outcomes:</div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 10px;">
+                        <span style="color: rgba(148, 163, 184, 0.85);">Strong Bounce:</span>
+                        <span id="strong-bounce" style="color: #10b981;">0 (0%)</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 10px;">
+                        <span style="color: rgba(148, 163, 184, 0.85);">Weak Bounce:</span>
+                        <span id="weak-bounce" style="color: #3b82f6;">0 (0%)</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 10px;">
+                        <span style="color: rgba(148, 163, 184, 0.85);">Breakthrough:</span>
+                        <span id="breakthrough" style="color: #ef4444;">0 (0%)</span>
+                    </div>
+                </div>
+
+                <!-- Performance by Side -->
+                <div
+                    style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
+                    <div style="font-weight: 500; margin-bottom: 6px; font-size: 10px; color: #cbd5e1;">Performance by
+                        Side:</div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 10px;">
+                        <span style="color: #5eead4;">Longs:</span>
+                        <span id="long-performance" style="color: #5eead4;">0% (0/0)</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 10px;">
+                        <span style="color: #fca5a5;">Shorts:</span>
+                        <span id="short-performance" style="color: #fca5a5;">0% (0/0)</span>
+                    </div>
+                </div>
+
+                <!-- Performance by Intensity -->
+                <div
+                    style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
+                    <div style="font-weight: 500; margin-bottom: 6px; font-size: 10px; color: #cbd5e1;">By Intensity:
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 10px;">
+                        <span style="color: rgba(148, 163, 184, 0.85);">High (>70%):</span>
+                        <span id="high-intensity" style="color: #f1f5f9;">0% (0)</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 10px;">
+                        <span style="color: rgba(148, 163, 184, 0.85);">Med (40-70%):</span>
+                        <span id="med-intensity" style="color: #f1f5f9;">0% (0)</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 10px;">
+                        <span style="color: rgba(148, 163, 184, 0.85);">Low (<40%):< /span>
+                                <span id="low-intensity" style="color: #f1f5f9;">0% (0)</span>
+                    </div>
+                </div>
+
+                <!-- Key Metric -->
+                <div
+                    style="margin-bottom: 12px; padding: 8px; background: rgba(59, 130, 246, 0.1); border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.2);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 600; color: #60a5fa; font-size: 10px;">Avg Bounce:</span>
+                        <span id="avg-bounce" style="font-weight: 700; color: #60a5fa; font-size: 14px;">0%</span>
+                    </div>
+                </div>
+
+                <!-- Export Button -->
+                <button onclick="exportAnalytics()"
+                    style="width: 100%; padding: 8px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); transition: all 0.2s;">
+                    📥 Export to CSV
+                </button>
+            </div>
         </div>
     </main>
 
@@ -1483,6 +1579,183 @@
             }
         }
 
+        // ==================== ANALYTICS FUNCTIONS ====================
+
+        // Get all clusters from database
+        async function getAllClusters() {
+            if (!clusterTrackingDB) return [];
+
+            return new Promise((resolve, reject) => {
+                const transaction = clusterTrackingDB.transaction(['clusters'], 'readonly');
+                const objectStore = transaction.objectStore('clusters');
+                const request = objectStore.getAll();
+
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // Calculate analytics metrics
+        async function calculateAnalytics() {
+            const allClusters = await getAllClusters();
+
+            if (allClusters.length === 0) {
+                return {
+                    total: 0,
+                    touched: 0,
+                    touchRate: 0,
+                    strongBounce: 0,
+                    weakBounce: 0,
+                    breakthrough: 0,
+                    noReaction: 0,
+                    bounceRate: 0,
+                    avgBounce: 0,
+                    bySymbol: {},
+                    bySide: { long: {}, short: {} },
+                    byIntensity: {}
+                };
+            }
+
+            const touched = allClusters.filter(c => c.touchedAt);
+            const withOutcome = allClusters.filter(c => c.outcome);
+
+            const strongBounce = withOutcome.filter(c => c.outcome.type === 'strong_bounce');
+            const weakBounce = withOutcome.filter(c => c.outcome.type === 'weak_bounce');
+            const breakthrough = withOutcome.filter(c => c.outcome.type === 'breakthrough');
+            const noReaction = withOutcome.filter(c => c.outcome.type === 'no_reaction');
+
+            const bounces = [...strongBounce, ...weakBounce];
+            const avgBounce = bounces.length > 0
+                ? bounces.reduce((sum, c) => sum + (c.outcome.bouncePercent || 0), 0) / bounces.length
+                : 0;
+
+            // Performance by side
+            const longClusters = touched.filter(c => c.side === 'long');
+            const shortClusters = touched.filter(c => c.side === 'short');
+
+            const longBounces = longClusters.filter(c =>
+                c.outcome?.type === 'strong_bounce' || c.outcome?.type === 'weak_bounce'
+            );
+            const shortBounces = shortClusters.filter(c =>
+                c.outcome?.type === 'strong_bounce' || c.outcome?.type === 'weak_bounce'
+            );
+
+            // Performance by intensity
+            const highIntensity = touched.filter(c => c.intensity >= 0.7);
+            const medIntensity = touched.filter(c => c.intensity >= 0.4 && c.intensity < 0.7);
+            const lowIntensity = touched.filter(c => c.intensity < 0.4);
+
+            return {
+                total: allClusters.length,
+                touched: touched.length,
+                touchRate: (touched.length / allClusters.length * 100).toFixed(1),
+                strongBounce: strongBounce.length,
+                weakBounce: weakBounce.length,
+                breakthrough: breakthrough.length,
+                noReaction: noReaction.length,
+                bounceRate: touched.length > 0
+                    ? (bounces.length / touched.length * 100).toFixed(1)
+                    : 0,
+                avgBounce: avgBounce.toFixed(2),
+                bySide: {
+                    long: {
+                        total: longClusters.length,
+                        bounces: longBounces.length,
+                        bounceRate: longClusters.length > 0
+                            ? (longBounces.length / longClusters.length * 100).toFixed(1)
+                            : 0
+                    },
+                    short: {
+                        total: shortClusters.length,
+                        bounces: shortBounces.length,
+                        bounceRate: shortClusters.length > 0
+                            ? (shortBounces.length / shortClusters.length * 100).toFixed(1)
+                            : 0
+                    }
+                },
+                byIntensity: {
+                    high: {
+                        total: highIntensity.length,
+                        bounceRate: highIntensity.length > 0
+                            ? (highIntensity.filter(c => c.outcome?.type?.includes('bounce')).length / highIntensity.length * 100).toFixed(1)
+                            : 0
+                    },
+                    medium: {
+                        total: medIntensity.length,
+                        bounceRate: medIntensity.length > 0
+                            ? (medIntensity.filter(c => c.outcome?.type?.includes('bounce')).length / medIntensity.length * 100).toFixed(1)
+                            : 0
+                    },
+                    low: {
+                        total: lowIntensity.length,
+                        bounceRate: lowIntensity.length > 0
+                            ? (lowIntensity.filter(c => c.outcome?.type?.includes('bounce')).length / lowIntensity.length * 100).toFixed(1)
+                            : 0
+                    }
+                }
+            };
+        }
+
+        // Update analytics UI
+        async function updateAnalyticsUI() {
+            const stats = await calculateAnalytics();
+
+            // Update DOM elements
+            document.getElementById('total-tracked').textContent = stats.total;
+            document.getElementById('total-touched').textContent = `${stats.touched} (${stats.touchRate}%)`;
+            document.getElementById('strong-bounce').textContent = `${stats.strongBounce} (${stats.strongBounce > 0 ? (stats.strongBounce / stats.touched * 100).toFixed(1) : 0}%)`;
+            document.getElementById('weak-bounce').textContent = `${stats.weakBounce} (${stats.weakBounce > 0 ? (stats.weakBounce / stats.touched * 100).toFixed(1) : 0}%)`;
+            document.getElementById('breakthrough').textContent = `${stats.breakthrough} (${stats.breakthrough > 0 ? (stats.breakthrough / stats.touched * 100).toFixed(1) : 0}%)`;
+            document.getElementById('bounce-rate').textContent = `${stats.bounceRate}%`;
+            document.getElementById('avg-bounce').textContent = `${stats.avgBounce}%`;
+
+            // Update side performance
+            document.getElementById('long-performance').textContent = `${stats.bySide.long.bounceRate}% (${stats.bySide.long.bounces}/${stats.bySide.long.total})`;
+            document.getElementById('short-performance').textContent = `${stats.bySide.short.bounceRate}% (${stats.bySide.short.bounces}/${stats.bySide.short.total})`;
+
+            // Update intensity performance
+            document.getElementById('high-intensity').textContent = `${stats.byIntensity.high.bounceRate}% (${stats.byIntensity.high.total})`;
+            document.getElementById('med-intensity').textContent = `${stats.byIntensity.medium.bounceRate}% (${stats.byIntensity.medium.total})`;
+            document.getElementById('low-intensity').textContent = `${stats.byIntensity.low.bounceRate}% (${stats.byIntensity.low.total})`;
+        }
+
+        // Export analytics to CSV
+        async function exportAnalytics() {
+            const allClusters = await getAllClusters();
+
+            if (allClusters.length === 0) {
+                alert('No hay datos para exportar');
+                return;
+            }
+
+            const csv = [
+                ['ID', 'Symbol', 'Interval', 'Side', 'Price', 'Intensity', 'Created', 'Touched', 'Time to Touch (h)', 'Outcome', 'Bounce %'].join(','),
+                ...allClusters.map(c => [
+                    c.id,
+                    c.symbol,
+                    c.interval,
+                    c.side,
+                    c.priceLevel.toFixed(2),
+                    c.intensity.toFixed(2),
+                    new Date(c.createdAt).toISOString(),
+                    c.touchedAt ? new Date(c.touchedAt).toISOString() : 'N/A',
+                    c.touchedAt ? ((c.touchedAt - c.createdAt) / 3600000).toFixed(2) : 'N/A',
+                    c.outcome?.type || 'pending',
+                    c.outcome?.bouncePercent?.toFixed(2) || 'N/A'
+                ].join(','))
+            ].join('\n');
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `cluster-analytics-${currentSymbol}-${Date.now()}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
+
+            console.log(`📥 Exported ${allClusters.length} clusters to CSV`);
+        }
+
         function clearAllZones() {
             historicalPriceLines.forEach(line => candlestickSeries.removePriceLine(line));
             activePriceLines.forEach(line => candlestickSeries.removePriceLine(line));
@@ -1978,8 +2251,227 @@
             });
 
             window.addEventListener('resize', handleResize);
+
+            // Initialize cluster tracking database
+            initClusterTrackingDB().catch(err => {
+                console.warn('⚠️ Cluster tracking disabled:', err);
+            });
+            ```
+
+            const significantLiqs = totalLiqs
+                .filter(l => l.totalLiqValue > 0)
+                .sort((a, b) => b.totalLiqValue - a.totalLiqValue);
+
+            if (significantLiqs.length === 0) return;
+
+            const avgLiqValue = significantLiqs.reduce((sum, l) => sum + l.totalLiqValue, 0) / significantLiqs.length;
+            const liqThreshold = avgLiqValue * 0.2;  // Reduced from 0.5 to 0.2 to show more zones
+
+            const MAX_HISTORICAL_ZONES = 50;  // Increased from 20 to 50
+            let zonesDrawn = 0;
+
+            for (const liq of significantLiqs) {
+                if (zonesDrawn >= MAX_HISTORICAL_ZONES) break;
+                if (liq.totalLiqValue < liqThreshold) continue;
+
+                const drawLine = (price, isTop) => {
+                    const line = candlestickSeries.createPriceLine({
+                        price: price,
+                        color: '#808080',
+                        lineWidth: 1,
+                        lineStyle: LightweightCharts.LineStyle.Dashed,
+                        axisLabelVisible: isTop,
+                        title: isTop ? `$${ (liq.totalLiqValue / 1e6).toFixed(1) } M` : '',
+                        axisLabelColor: '#808080',
+                        axisLabelTextColor: '#ffffff',
+                    });
+                    historicalPriceLines.push(line);
+                };
+
+                const longValue = longLiqs[liq.index]?.value || 0;
+                const shortValue = shortLiqs[liq.index]?.value || 0;
+                const dominantSide = longValue >= shortValue ? 'long' : 'short';
+
+                // Extend zone duration to current time + 30 days to keep them visible
+                const currentTime = Math.floor(Date.now() / 1000);
+                const nextKlineTime = klines[liq.index + 1]?.time ?? (klines.length > 1 ? liq.kline.time + (klines[1].time - klines[0].time) : liq.kline.time + 3600);
+                const extendedEndTime = Math.max(nextKlineTime, currentTime + (30 * 24 * 60 * 60));  // Extend 30 days
+
+                drawLine(liq.kline.high, true);
+                drawLine(liq.kline.low, false);
+
+                const zone = {
+                    startTime: liq.kline.time,
+                    endTime: extendedEndTime,
+                    high: liq.kline.high,
+                    low: liq.kline.low,
+                    totalValue: liq.totalLiqValue,
+                    side: dominantSide
+                };
+
+                historicalLiquidityZones.push(zone);
+
+                // Debug logging
+                if (zonesDrawn < 3) {  // Log first 3 zones
+                    console.log(`Historical Zone ${ zonesDrawn }: `, {
+                        price: `${ zone.low.toFixed(2) } -${ zone.high.toFixed(2) } `,
+                        side: zone.side,
+                        value: `$${ (zone.totalValue / 1e6).toFixed(2) } M`,
+                        startTime: new Date(zone.startTime * 1000).toISOString(),
+                        endTime: new Date(zone.endTime * 1000).toISOString()
+                    });
+                }
+
+                zonesDrawn++;
+            }
+
+            // Summary log
+            console.log(`✅ Created ${ historicalLiquidityZones.length } historical liquidation zones`);
+        }
+
+        function clearAllSeriesData() {
+            if (!candlestickSeries) return;
+            candlestickSeries.setData([]);
+            volumeSeries.setData([]);
+            openInterestSeries.setData([]);
+            longLiqsSeries.setData([]);
+            shortLiqsSeries.setData([]);
+            oiVolRatioSeries.setData([]);
+            clearAllZones();
+        }
+
+        function handleResize() {
+            if (chart) {
+                runWithTimeScaleLock(() => chart.resize(chartContainer.clientWidth, chartContainer.clientHeight));
+            }
+            resizeHeatmapOverlay();
+            drawOverlayClusters();
+        }
+
+        // --- Event Listeners ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeChart();
+            applyTheme(currentTheme);
+            updateLiquiditySliderLabel();
+            updateChartData();
+            chartContainer.addEventListener('dblclick', () => {
+                resetUserTimeScalePreference();
+                maybeAutoFitTimeScale();
+            });
+
+            // Toggle Liquidity Panel
+            togglePanelBtn.addEventListener('click', () => {
+                liquidityPanel.classList.toggle('active');
+            });
+
+            setInterval(() => {
+                if (!isUpdating) {
+                    updateChartData();
+                }
+            }, 30000);
+
+            // Drawing Tool Logic
+            drawLineTool.addEventListener('click', () => {
+                isDrawingMode = !isDrawingMode;
+                drawLineTool.classList.toggle('active', isDrawingMode);
+            });
+
+            chart.subscribeClick(param => {
+                if (!isDrawingMode || !param.point) return;
+
+                const price = candlestickSeries.coordinateToPrice(param.point.y);
+
+                const lineToRemove = userDrawnLines.find(line => {
+                    const linePrice = line.options().price;
+                    const lineCoordinate = candlestickSeries.priceToCoordinate(linePrice);
+                    if (lineCoordinate === null || lineCoordinate === undefined) return false;
+                    return Math.abs(lineCoordinate - param.point.y) < 5;
+                });
+
+                if (lineToRemove) {
+                    candlestickSeries.removePriceLine(lineToRemove);
+                    userDrawnLines = userDrawnLines.filter(l => l !== lineToRemove);
+                } else {
+                    const newLine = candlestickSeries.createPriceLine({
+                        price: price,
+                        color: '#2962FF',
+                        lineWidth: 2,
+                        lineStyle: LightweightCharts.LineStyle.Solid,
+                        axisLabelVisible: true,
+                        title: ''
+                    });
+                    userDrawnLines.push(newLine);
+                }
+            });
+
+            themeToggle.addEventListener('click', () => {
+                currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                applyTheme(currentTheme);
+            });
+
+            symbolSelector.addEventListener('change', (e) => {
+                currentSymbol = e.target.value;
+                resetUserTimeScalePreference();
+                updateChartData();
+            });
+
+            intervalButtonsContainer.addEventListener('click', (e) => {
+                const target = e.target.closest('.interval-btn');
+                if (!target) return;
+                intervalButtonsContainer.querySelector('.active').classList.remove('active');
+                target.classList.add('active');
+                currentInterval = target.dataset.interval;
+                resetUserTimeScalePreference();
+                updateChartData();
+            });
+
+            leverageButtonsContainer.addEventListener('click', (e) => {
+                const target = e.target.closest('.leverage-btn');
+                if (!target) return;
+                target.classList.toggle('active');
+
+                selectedLeverages = Array.from(leverageButtonsContainer.querySelectorAll('.active'))
+                    .map(btn => parseInt(btn.dataset.leverage, 10));
+
+                if (selectedLeverages.length === 0) {
+                    target.classList.add('active');
+                    selectedLeverages.push(parseInt(target.dataset.leverage, 10));
+                }
+                renderAllVisuals();
+            });
+
+            liquiditySlider.addEventListener('input', (e) => {
+                liquidityThresholdPct = Number(e.target.value) / 100;
+                updateLiquiditySliderLabel();
+                renderAllVisuals();
+            });
+
+            window.addEventListener('resize', handleResize);
+
+            // Initialize cluster tracking database
+            initClusterTrackingDB().catch(err => {
+                console.warn('⚠️ Cluster tracking disabled:', err);
+            });
+
+            // Check cluster touches periodically (every 5 seconds)
+            setInterval(() => {
+                checkClusterTouches();
+            }, 5000);
+            
+            // Update analytics UI periodically (every 10 seconds)
+            setInterval(() => {
+                updateAnalyticsUI();
+            }, 10000);
+            
+            // Initial analytics update
+            setTimeout(() => {
+                updateAnalyticsUI();
+            }, 2000);
+            
+            console.log('🚀 Liquidation Zone Heatmap initialized with cluster tracking');
         });
     </script>
 </body>
 
 </html>
+```
